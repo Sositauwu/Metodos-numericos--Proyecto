@@ -428,3 +428,14 @@
       .chart-container { height: 300px; }
       .conv-container { height: 220px; }
     }
+
+/* Lista de integrantes */
+.footer-card .members {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 2px 18px;
+  margin: 4px 0 6px;
+}
+.footer-card .members li { color: #e2e8f0; }
