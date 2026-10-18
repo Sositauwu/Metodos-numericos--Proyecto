@@ -1,0 +1,430 @@
+    :root {
+      --blue-btn: #1868db;
+      --blue-btn-hover: #1252b0;
+      --teal-btn: #0d6e6e;
+      --teal-btn-hover: #095252;
+      --purple-btn: #4f46e5;
+      --purple-btn-hover: #3730a3;
+      --dark-footer: #1e2631;
+      --border-color: #cbd5e1;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      padding: 28px 16px;
+      /* Fondo institucional: primero una copia local (assets/fondo_fiee.jpg) y, si no existe, la de Wikimedia */
+      background: linear-gradient(rgba(235, 238, 242, 0.86), rgba(225, 230, 236, 0.90)),
+                  url('assets/fondo_fiee.jpg'),
+                  url('https://upload.wikimedia.org/wikipedia/commons/thumb/3/36/UNMSM_Facultad_de_Ingenier%C3%ADa_Electr%C3%B3nica_y_El%C3%A9ctrica_2019.jpg/1280px-UNMSM_Facultad_de_Ingenier%C3%ADa_Electr%C3%B3nica_y_El%C3%A9ctrica_2019.jpg');
+      background-color: #e5e9ef;
+      background-size: cover;
+      background-position: center;
+      background-attachment: fixed;
+      color: #1e293b;
+    }
+
+    /* Tarjeta Principal */
+    .main-card {
+      background: #ffffff;
+      width: 100%;
+      max-width: 980px;
+      min-height: 620px;
+      border-radius: 12px;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
+      padding: 32px 36px;
+      margin-bottom: 24px;
+    }
+
+    /* Encabezado FIEE UNMSM */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 18px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid #e2e8f0;
+      margin-bottom: 22px;
+    }
+
+    .logo-fiee {
+      width: 62px;
+      height: 62px;
+      object-fit: contain;
+    }
+
+    .header-text h1 {
+      font-size: 1.75rem;
+      font-weight: 700;
+      color: #111827;
+      letter-spacing: -0.3px;
+    }
+
+    .header-text p {
+      font-size: 0.95rem;
+      color: #4b5563;
+      margin-top: 2px;
+    }
+
+    /* Zona de carga de Excel */
+    .upload-instruction {
+      text-align: center;
+      font-size: 0.9rem;
+      color: #475569;
+      margin-bottom: 12px;
+    }
+
+    .file-drop-area {
+      border: 1.5px dashed #94a3b8;
+      border-radius: 8px;
+      padding: 12px 18px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      background: #f8fafc;
+      margin-bottom: 14px;
+    }
+
+    .file-input-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .param-group input.wide-input { width: 230px; text-align: left; }
+    input[type="file"] {
+      font-size: 0.85rem;
+      color: #334155;
+    }
+
+    .demo-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .btn-small {
+      background: #e2e8f0;
+      color: #1e293b;
+      border: 1px solid #cbd5e1;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .btn-small:hover {
+      background: #cbd5e1;
+    }
+
+    /* Selector de columnas X / Y (solo si el archivo tiene más de 2 columnas) */
+    .col-selector {
+      display: none;
+      flex-wrap: wrap;
+      gap: 14px;
+      justify-content: center;
+      align-items: center;
+      background: #fefce8;
+      border: 1px solid #fde68a;
+      padding: 10px 14px;
+      border-radius: 8px;
+      margin-bottom: 14px;
+      font-size: 0.85rem;
+    }
+    .col-selector label { font-weight: 600; color: #713f12; margin-right: 6px; }
+    .col-selector select { padding: 4px 8px; border: 1px solid #cbd5e1; border-radius: 5px; font-size: 0.85rem; }
+
+    /* Barra de Parámetros Interactivos */
+    .params-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      justify-content: center;
+      align-items: center;
+      background: #f1f5f9;
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin-bottom: 12px;
+      font-size: 0.85rem;
+    }
+
+    .param-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .param-group label {
+      font-weight: 600;
+      color: #334155;
+    }
+
+    .param-group input, .param-group select {
+      width: 90px;
+      padding: 5px 8px;
+      border: 1px solid #cbd5e1;
+      border-radius: 5px;
+      font-size: 0.85rem;
+      text-align: center;
+    }
+    .param-group select { width: auto; }
+
+    .warn-box {
+      display: none;
+      background: #fffbeb;
+      border-left: 4px solid #f59e0b;
+      color: #92400e;
+      padding: 8px 14px;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      line-height: 1.5;
+      margin-bottom: 12px;
+    }
+
+    
+    /* Botonera de Métodos Numéricos */
+    .methods-section-title {
+      text-align: center;
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: #64748b;
+      font-weight: 700;
+      margin: 12px 0 8px;
+    }
+
+    .buttons-grid {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .method-btn {
+      border: none;
+      color: #ffffff;
+      padding: 10px 16px;
+      border-radius: 7px;
+      font-size: 0.84rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      transition: transform 0.12s, background-color 0.15s;
+    }
+
+    .method-btn:hover {
+      transform: translateY(-1px);
+    }
+
+    .method-btn:focus-visible, .btn-small:focus-visible {
+      outline: 3px solid #f59e0b;
+      outline-offset: 2px;
+    }
+
+    .method-btn.active-btn {
+      outline: 3px solid #93c5fd;
+    }
+
+    .btn-blue { background-color: var(--blue-btn); }
+    .btn-blue:hover { background-color: var(--blue-btn-hover); }
+
+    .btn-teal { background-color: var(--teal-btn); }
+    .btn-teal:hover { background-color: var(--teal-btn-hover); }
+
+    .btn-purple { background-color: var(--purple-btn); }
+    .btn-purple:hover { background-color: var(--purple-btn-hover); }
+
+    /* Área de Resultados */
+    .workspace {
+      margin-top: 24px;
+      display: none;
+      animation: fadeIn 0.25s ease-in-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(5px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .result-banner {
+      background: #eff6ff;
+      border-left: 4px solid var(--blue-btn);
+      padding: 14px 18px;
+      border-radius: 6px;
+      margin-bottom: 20px;
+    }
+
+    .result-banner h3 {
+      font-size: 1.05rem;
+      color: #1e3a8a;
+      margin-bottom: 6px;
+    }
+
+    .result-banner p {
+      font-size: 0.9rem;
+      color: #1e293b;
+      line-height: 1.5;
+    }
+
+    .analytic-note {
+      margin-top: 8px;
+      font-size: 0.85rem;
+      color: #065f46;
+      background: #ecfdf5;
+      border: 1px solid #a7f3d0;
+      border-radius: 6px;
+      padding: 6px 10px;
+    }
+
+    .formula-box {
+      background: #0f172a;
+      color: #e2e8f0;
+      padding: 12px 16px;
+      border-radius: 6px;
+      font-family: 'Consolas', 'Courier New', monospace;
+      font-size: 0.83rem;
+      overflow-x: auto;
+      margin-top: 10px;
+      white-space: pre-wrap;
+    }
+
+    /* Contenedor de Gráfica */
+    .chart-container {
+      position: relative;
+      width: 100%;
+      height: 390px;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 22px;
+    }
+
+    .conv-container {
+      display: none;
+      position: relative;
+      width: 100%;
+      height: 260px;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 22px;
+    }
+
+    /* Tablas de Datos e Iteraciones */
+    .tables-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 20px;
+    }
+
+    .table-card {
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .table-card h4 {
+      background: #f8fafc;
+      padding: 10px 14px;
+      font-size: 0.88rem;
+      color: #334155;
+      border-bottom: 1px solid #e2e8f0;
+    }
+
+    .table-scroll {
+      max-height: 280px;
+      overflow-y: auto;
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.82rem;
+      text-align: center;
+    }
+
+    th, td {
+      padding: 8px 10px;
+      border-bottom: 1px solid #f1f5f9;
+    }
+
+    th {
+      background: #f1f5f9;
+      font-weight: 600;
+      color: #475569;
+      position: sticky;
+      top: 0;
+    }
+
+    tr:hover td {
+      background: #f8fafc;
+    }
+
+    /* Footer Oscuro Institucional */
+    .footer-card {
+      background: var(--dark-footer);
+      color: #f8fafc;
+      padding: 16px 28px;
+      border-radius: 8px;
+      text-align: center;
+      font-size: 0.8rem;
+      line-height: 1.6;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.22);
+      max-width: 520px;
+      width: 100%;
+    }
+
+    .footer-card strong {
+      color: #ffffff;
+    }
+
+    .status-badge {
+      display: inline-block;
+      font-size: 0.78rem;
+      padding: 3px 10px;
+      border-radius: 999px;
+      background: #dcfce7;
+      color: #166534;
+      font-weight: 600;
+      margin-left: 8px;
+    }
+
+    /* Barra de exportación y panel explicativo */
+    .export-bar { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+    .how-box { margin-top: 12px; font-size: 0.88rem; line-height: 1.55; color: #1e293b; }
+    .how-box summary { cursor: pointer; font-weight: 600; color: #1e3a8a; }
+    .how-box .how-text { margin-top: 8px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px 14px; }
+    .how-box .how-text code { font-family: 'Consolas', 'Courier New', monospace; background: #e2e8f0; padding: 1px 5px; border-radius: 4px; }
+
+    /* Pantallas pequeñas (sin verificar visualmente en un celular real) */
+    @media (max-width: 640px) {
+      body { padding: 14px 8px; }
+      .main-card { padding: 20px 14px; }
+      .header { flex-direction: column; text-align: center; }
+      .file-drop-area, .params-bar, .demo-actions { justify-content: center; }
+      .param-group { flex-wrap: wrap; justify-content: center; }
+      .chart-container { height: 300px; }
+      .conv-container { height: 220px; }
+    }
