@@ -17,18 +17,25 @@
   <!-- TARJETA PRINCIPAL -->
   <main class="main-card">
     <header class="header">
-      <!-- ESCUDO DE LA FIEE: guarda tu imagen en la carpeta assets/ con el nombre  escudo_fiee.png
-           (si no existe, se prueba assets/escudo_unmsm.png y luego el escudo de Wikimedia) -->
+      <!-- ESCUDO IZQUIERDO (UNMSM): assets/escudo_unmsm.png; si no existe, se usa el de Wikimedia -->
       <img
-        src="assets/escudo_fiee.png"
-        onerror="var f=+this.dataset.fb||0,l=['assets/escudo_unmsm.png','https://upload.wikimedia.org/wikipedia/commons/thumb/3/3a/UNMSM_coatofarms_seal.svg/200px-UNMSM_coatofarms_seal.svg.png'];if(f<l.length){this.dataset.fb=f+1;this.src=l[f];}else{this.style.display='none';}"
-        alt="Escudo de la FIEE"
+        src="assets/escudo_unmsm.png"
+        onerror="if(!this.dataset.fb){this.dataset.fb=1;this.src='https://upload.wikimedia.org/wikipedia/commons/thumb/3/3a/UNMSM_coatofarms_seal.svg/200px-UNMSM_coatofarms_seal.svg.png';}else{this.style.display='none';}"
+        alt="Escudo UNMSM"
         class="logo-fiee"
       />
       <div class="header-text">
         <h1>Métodos Numéricos</h1>
         <p>Facultad de Ingeniería Electrónica y Eléctrica</p>
       </div>
+      <!-- ESCUDO DERECHO (FIEE): guarda tu imagen en la carpeta assets/ con el nombre  escudo_fiee.png
+           Si el archivo no existe, simplemente no se muestra nada en este lado. -->
+      <img
+        src="assets/escudo_fiee.png"
+        onerror="this.style.display='none';"
+        alt="Escudo de la FIEE"
+        class="logo-fiee"
+      />
     </header>
 
     <p class="upload-instruction">
