@@ -4,20 +4,16 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Métodos Numéricos - FIEE UNMSM</title>
-  <!-- Librería SheetJS para leer archivos Excel (.xlsx, .xls) y escribir resultados -->
   <script src="libs/xlsx.full.min.js"></script>
   <script>if (typeof XLSX === 'undefined') document.write('<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"><\/script>');</script>
-  <!-- Librería Chart.js para gráficos interactivos -->
   <script src="libs/chart.umd.js"></script>
   <script>if (typeof Chart === 'undefined') document.write('<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"><\/script>');</script>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
 
-  <!-- TARJETA PRINCIPAL -->
   <main class="main-card">
     <header class="header">
-      <!-- ESCUDO IZQUIERDO (UNMSM): assets/escudo_unmsm.png; si no existe, se usa el de Wikimedia -->
       <img
         src="assets/escudo_unmsm.png"
         onerror="if(!this.dataset.fb){this.dataset.fb=1;this.src='https://upload.wikimedia.org/wikipedia/commons/thumb/3/3a/UNMSM_coatofarms_seal.svg/200px-UNMSM_coatofarms_seal.svg.png';}else{this.style.display='none';}"
@@ -28,8 +24,6 @@
         <h1>Métodos Numéricos</h1>
         <p>Facultad de Ingeniería Electrónica y Eléctrica</p>
       </div>
-      <!-- ESCUDO DERECHO (FIEE): guarda tu imagen en la carpeta assets/ con el nombre  escudo_fiee.png
-           Si el archivo no existe, simplemente no se muestra nada en este lado. -->
       <img
         src="assets/escudo_fiee.png"
         onerror="this.style.display='none';"
@@ -70,13 +64,11 @@
       </div>
     </div>
 
-    <!-- Selector de columnas (visible solo si el archivo tiene más de 2 columnas) -->
     <div id="colSelector" class="col-selector">
       <div><label for="colXSel">Columna X:</label><select id="colXSel"></select></div>
       <div><label for="colYSel">Columna Y:</label><select id="colYSel"></select></div>
     </div>
 
-    <!-- Parámetros de evaluación para Interpolación, Derivación y Raíces -->
     <div class="params-bar">
       <div class="param-group">
         <label for="evalX">Interpolación en X =</label>
@@ -108,7 +100,6 @@
       </div>
     <div id="paramWarn" class="warn-box" role="alert"></div>
 
-    <!-- GRUPO 1: INTERPOLACIÓN, DERIVACIÓN E INTEGRACIÓN -->
     <div class="methods-section-title">Interpolación, Derivación e Integración Numérica</div>
     <div class="buttons-grid" role="group" aria-label="Métodos de interpolación, derivación e integración">
       <button type="button" class="method-btn btn-blue" data-method="lagrange" onclick="runMethod('lagrange', this)">
@@ -134,7 +125,6 @@
       </button>
     </div>
 
-    <!-- GRUPO 2: RAÍCES DE ECUACIONES -->
     <div class="methods-section-title">Búsqueda de Raíces: Solución de f(x) - Y<sub>ref</sub> = 0</div>
     <div class="buttons-grid" role="group" aria-label="Métodos de búsqueda de raíces">
       <button type="button" class="method-btn btn-purple" data-method="grafico" onclick="runMethod('grafico', this)">
@@ -151,7 +141,6 @@
       </button>
     </div>
 
-    <!-- ÁREA DINÁMICA DE GRÁFICOS Y RESULTADOS -->
     <section id="workspace" class="workspace">
       <div class="result-banner">
         <h3 id="methodTitle">Resultado del Método</h3>
@@ -193,7 +182,6 @@
     </section>
   </main>
 
-  <!-- FOOTER INSTITUCIONAL -->
   <footer class="footer-card">
     <div><strong>Curso:</strong> Métodos Numéricos | <strong>Docente:</strong> Josué Miranda</div>
     <div><strong>Integrantes:</strong></div>
@@ -206,7 +194,6 @@
     <div>Universidad Nacional Mayor de San Marcos - 2026</div>
   </footer>
 
-  <!-- LÓGICA MATEMÁTICA Y DE INTERFAZ -->
   <script src="app.js"></script>
 </body>
 </html>
