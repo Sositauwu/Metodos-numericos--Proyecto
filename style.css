@@ -24,13 +24,8 @@
       justify-content: space-between;
       padding: 28px 16px;
       /* Fondo institucional: primero una copia local (assets/fondo_fiee.jpg) y, si no existe, la de Wikimedia */
-      background: linear-gradient(rgba(235, 238, 242, 0.86), rgba(225, 230, 236, 0.90)),
-                  url('assets/fondo_fiee.jpg'),
-                  url('https://upload.wikimedia.org/wikipedia/commons/thumb/3/36/UNMSM_Facultad_de_Ingenier%C3%ADa_Electr%C3%B3nica_y_El%C3%A9ctrica_2019.jpg/1280px-UNMSM_Facultad_de_Ingenier%C3%ADa_Electr%C3%B3nica_y_El%C3%A9ctrica_2019.jpg');
-      background-color: #e5e9ef;
-      background-size: cover;
-      background-position: center;
-      background-attachment: fixed;
+      background-image: url('assets/pattern.png');
+    background-repeat: repeat;
       color: #1e293b;
     }
 
