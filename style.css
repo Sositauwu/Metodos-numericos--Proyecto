@@ -16,8 +16,8 @@
       font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
     }
 @font-face {
-    font-family: 'JimNightshade';
-    src: url('assets/JimNightshade-Regular.ttf') format('truetype');
+    font-family: 'FontdinerSwanky';
+    src: url('assets/FontdinerSwanky-Regular.ttf') format('truetype');
 }
     body {
       min-height: 100vh;
@@ -64,8 +64,8 @@
     }
 
     .header-text h1 {
-    font-family: 'JimNightshade', cursive;
-    font-size: 2.2rem; /* Subo un poco el tamaño porque esta fuente puede verse delgada */
+    font-family: 'FontdinerSwanky', cursive;
+    font-size: 2.2rem;
     font-weight: 700;
     color: #111827;
     letter-spacing: -0.3px;
