@@ -1,0 +1,13 @@
+{
+  "name": "metodos-numericos-fiee",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Laboratorio de métodos numéricos FIEE UNMSM",
+  "scripts": {
+    "test": "node test.js",
+    "check": "node --check app.js"
+  },
+  "devDependencies": {
+    "jsdom": "^30.1.3"
+  }
+}

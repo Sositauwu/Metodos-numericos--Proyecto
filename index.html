@@ -1,200 +1,500 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
-<head>
-  <link rel="icon" type="image/x-icon" href="assets/favicon.ico">
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Métodos Numéricos - FIEE UNMSM</title>
-  <script src="libs/xlsx.full.min.js"></script>
-  <script>if (typeof XLSX === 'undefined') document.write('<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"><\/script>');</script>
-  <script src="libs/chart.umd.js"></script>
-  <script>if (typeof Chart === 'undefined') document.write('<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"><\/script>');</script>
-  <link rel="stylesheet" href="style.css" />
-</head>
-<body>
-
-  <main class="main-card">
-    <header class="header">
-      <img
-        src="assets/escudo_unmsm.png"
-        onerror="if(!this.dataset.fb){this.dataset.fb=1;this.src='https://upload.wikimedia.org/wikipedia/commons/thumb/3/3a/UNMSM_coatofarms_seal.svg/200px-UNMSM_coatofarms_seal.svg.png';}else{this.style.display='none';}"
-        alt="Escudo UNMSM"
-        class="logo-fiee"
-      />
-      <div class="header-text">
-        <h1>Métodos Numéricos</h1>
-        <p>Facultad de Ingeniería Electrónica y Eléctrica</p>
-      </div>
-      <img
-        src="assets/escudo_fiee.png"
-        onerror="this.style.display='none';"
-        alt="Escudo de la FIEE"
-        class="logo-fiee"
-      />
-    </header>
-
-    <p class="upload-instruction">
-      Sube tu archivo Excel o CSV. Por defecto se usan las dos primeras columnas (X, Y); si el archivo tiene más, podrás elegir cuáles.
-      <span id="dataStatus" class="status-badge" style="display:none;" role="status">Datos cargados</span>
-    </p>
-
-    <div class="file-drop-area">
-      <div class="file-input-wrapper">
-        <label for="hdrMode" style="font-size:0.8rem;color:#475569;">Primera fila:</label>
-        <select id="hdrMode" class="btn-small" title="¿La primera fila del archivo es un encabezado de texto?">
-          <option value="auto">Detectar encabezado</option>
-          <option value="yes">Es encabezado</option>
-          <option value="no">Son datos</option>
-        </select>
-        <label for="excelFileInput" style="position:absolute;left:-9999px;">Archivo Excel o CSV</label>
-        <input type="file" id="excelFileInput" accept=".xlsx, .xls, .csv" />
-      </div>
-      <div class="demo-actions">
-        <select id="demoSelect" class="btn-small" title="Conjunto de datos de ejemplo" aria-label="Conjunto de datos de ejemplo">
-          <option value="rc_carga">Circuito RC: carga</option>
-          <option value="rc_descarga">Circuito RC: descarga</option>
-          <option value="rlc">Circuito RLC subamortiguado</option>
-          <option value="rc_ruido">RC con ruido (29 puntos)</option>
-        </select>
-        <button type="button" class="btn-small" onclick="loadDemoCircuitData()">
-          ⚡ Cargar Datos Demo
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f3f6fa" />
+    <meta
+      name="description"
+      content="Laboratorio de métodos numéricos de la FIEE UNMSM. Analiza datos de Excel o CSV con interpolación, derivación, integración y búsqueda de raíces."
+    />
+    <title>Métodos Numéricos · FIEE UNMSM</title>
+    <link rel="icon" href="assets/favicon.ico" />
+    <link
+      rel="preload"
+      href="assets/fonts/Manrope-Variable.ttf"
+      as="font"
+      type="font/ttf"
+      crossorigin
+    />
+    <link rel="stylesheet" href="style.css" />
+    <script src="libs/xlsx.full.min.js" defer></script>
+    <script src="libs/chart.umd.js" defer></script>
+    <script src="app.js" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#analysis">Saltar al análisis</a>
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="Navegación del laboratorio">
+        <a
+          class="brand"
+          href="#analysis"
+          aria-label="Laboratorio de métodos numéricos"
+        >
+          <span class="brand-mark" aria-hidden="true">∫</span>
+          <span>Laboratorio<br /><strong>numérico</strong></span>
+        </a>
+        <button
+          class="mobile-menu"
+          type="button"
+          id="menuToggle"
+          aria-expanded="false"
+          aria-controls="methodNav"
+        >
+          Elegir método <span aria-hidden="true">⌄</span>
         </button>
-        <button type="button" class="btn-small" onclick="downloadSampleExcel()">
-          📥 Descargar Excel de Ejemplo
-        </button>
-      </div>
-    </div>
-
-    <div id="colSelector" class="col-selector">
-      <div><label for="colXSel">Columna X:</label><select id="colXSel"></select></div>
-      <div><label for="colYSel">Columna Y:</label><select id="colYSel"></select></div>
-    </div>
-
-    <div class="params-bar">
-      <div class="param-group">
-        <label for="evalX">Interpolación en X =</label>
-        <input type="number" id="evalX" step="any" value="1.0" />
-      </div>
-      <div class="param-group">
-        <label for="targetY">Buscar Raíz para Y<sub>ref</sub> =</label>
-        <input type="number" id="targetY" step="any" value="3.0" title="Resuelve f(x) - Yref = 0" />
-      </div>
-      <div class="param-group">
-        <label for="rootTol" title="Criterio de parada de los métodos de raíces: error absoluto en x">Tolerancia |Δx| =</label>
-        <input type="number" id="rootTol" step="any" value="0.0001" />
-      </div>
-      <div class="param-group">
-        <label for="nNodes">Nodos cercanos (n) =</label>
-        <input type="number" id="nNodes" step="1" min="0" value="5" title="Nodos usados en Lagrange, Newton y Matricial (los más cercanos a X). 0 = usar todos; n debe ser 0 o ≥ 2" />
-      </div>
-      <div class="param-group">
-        <label for="rootA">Intervalo raíces [a,</label>
-        <input type="number" id="rootA" step="any" placeholder="auto" title="Inicio del intervalo para Bisección, Newton-Raphson y Secante. Vacío = inicio de los datos" />
-        <label for="rootB">b] =</label>
-        <input type="number" id="rootB" step="any" placeholder="auto" title="Fin del intervalo. Vacío = fin de los datos" />
-      </div>
-      <div class="param-group">
-        <label for="fExpr">f(x) opcional =</label>
-        <input type="text" id="fExpr" class="wide-input" placeholder="vacío = spline de los datos" autocomplete="off" spellcheck="false"
-               title="Función exacta para los métodos de raíces, p. ej. 5*(1-exp(-x/1.2)). Admite + - * / ^ ( ) y sin, cos, tan, exp, ln, log, sqrt, abs, pi, e. El dominio sigue siendo el de los datos." />
-      </div>
-      </div>
-    <div id="paramWarn" class="warn-box" role="alert"></div>
-
-    <div class="methods-section-title">Interpolación, Derivación e Integración Numérica</div>
-    <div class="buttons-grid" role="group" aria-label="Métodos de interpolación, derivación e integración">
-      <button type="button" class="method-btn btn-blue" data-method="lagrange" onclick="runMethod('lagrange', this)">
-        📈 Interpolación de Lagrange
-      </button>
-      <button type="button" class="method-btn btn-blue" data-method="newton_dd" onclick="runMethod('newton_dd', this)">
-        📐 Dif. Divididas de Newton
-      </button>
-      <button type="button" class="method-btn btn-blue" data-method="matricial" onclick="runMethod('matricial', this)">
-        🧮 Método Matricial
-      </button>
-      <button type="button" class="method-btn btn-teal" data-method="splines" onclick="runMethod('splines', this)">
-        🔗 Splines Cúbicos
-      </button>
-      <button type="button" class="method-btn btn-blue" data-method="derivadas" onclick="runMethod('derivadas', this)">
-        📊 Diferencias Centradas
-      </button>
-      <button type="button" class="method-btn btn-blue" data-method="trapecio" onclick="runMethod('trapecio', this)">
-        📐 Regla del Trapecio
-      </button>
-      <button type="button" class="method-btn btn-blue" data-method="simpson" onclick="runMethod('simpson', this)">
-        📙 Simpson 1/3 (+ 3/8)
-      </button>
-    </div>
-
-    <div class="methods-section-title">Búsqueda de Raíces: Solución de f(x) - Y<sub>ref</sub> = 0</div>
-    <div class="buttons-grid" role="group" aria-label="Métodos de búsqueda de raíces">
-      <button type="button" class="method-btn btn-purple" data-method="grafico" onclick="runMethod('grafico', this)">
-        🔍 Método Gráfico
-      </button>
-      <button type="button" class="method-btn btn-purple" data-method="biseccion" onclick="runMethod('biseccion', this)">
-        ✂️ Bisección
-      </button>
-      <button type="button" class="method-btn btn-purple" data-method="newton_raphson" onclick="runMethod('newton_raphson', this)">
-        🎯 Newton-Raphson
-      </button>
-      <button type="button" class="method-btn btn-purple" data-method="secante" onclick="runMethod('secante', this)">
-        📏 Método de la Secante
-      </button>
-    </div>
-
-    <section id="workspace" class="workspace">
-      <div class="result-banner">
-        <h3 id="methodTitle">Resultado del Método</h3>
-        <p id="methodSummary" aria-live="polite"></p>
-        <div id="methodFormula" class="formula-box" style="display:none;"></div>
-        <div class="export-bar">
-          <button type="button" class="btn-small" onclick="downloadChartPNG()">🖼️ Descargar gráfica (PNG)</button>
-          <button type="button" class="btn-small" onclick="downloadResultsExcel()">📊 Descargar resultados (Excel)</button>
-        </div>
-        <details class="how-box" id="howBox">
-          <summary>¿Cómo funciona este método?</summary>
-          <div class="how-text" id="howText"></div>
-        </details>
-      </div>
-
-      <div class="chart-container">
-        <canvas id="mainChart" role="img" aria-label="Gráfica del método seleccionado"></canvas>
-      </div>
-
-      <div class="conv-container" id="convContainer">
-        <canvas id="convChart" role="img" aria-label="Gráfica de convergencia del error por iteración"></canvas>
-      </div>
-
-      <div class="tables-grid">
-        <div class="table-card" id="methodTableCard">
-          <h4 id="methodTableTitle">Tabla de Cálculos / Iteraciones</h4>
-          <div class="table-scroll">
-            <table id="methodTable"></table>
+        <nav id="methodNav" class="method-nav" aria-label="Métodos numéricos">
+          <div class="nav-group">
+            <h2>Interpolación</h2>
+            <button
+              type="button"
+              class="method-btn"
+              data-method="lagrange"
+              aria-pressed="true"
+              onclick="runMethod('lagrange', this)"
+            >
+              Lagrange
+            </button>
+            <button
+              type="button"
+              class="method-btn"
+              data-method="newton_dd"
+              aria-pressed="false"
+              onclick="runMethod('newton_dd', this)"
+            >
+              Diferencias de Newton
+            </button>
+            <button
+              type="button"
+              class="method-btn"
+              data-method="matricial"
+              aria-pressed="false"
+              onclick="runMethod('matricial', this)"
+            >
+              Método matricial
+            </button>
+            <button
+              type="button"
+              class="method-btn"
+              data-method="splines"
+              aria-pressed="false"
+              onclick="runMethod('splines', this)"
+            >
+              Splines cúbicos
+            </button>
           </div>
-        </div>
-
-        <div class="table-card" id="rawTableCard">
-          <h4 id="rawTableTitle">Datos Originales Detectados (columnas X, Y elegidas)</h4>
-          <div class="table-scroll">
-            <table id="rawDataTable"></table>
+          <div class="nav-group">
+            <h2>Derivación e integración</h2>
+            <button
+              type="button"
+              class="method-btn"
+              data-method="derivadas"
+              aria-pressed="false"
+              onclick="runMethod('derivadas', this)"
+            >
+              Diferencias centradas
+            </button>
+            <button
+              type="button"
+              class="method-btn"
+              data-method="trapecio"
+              aria-pressed="false"
+              onclick="runMethod('trapecio', this)"
+            >
+              Regla del trapecio
+            </button>
+            <button
+              type="button"
+              class="method-btn"
+              data-method="simpson"
+              aria-pressed="false"
+              onclick="runMethod('simpson', this)"
+            >
+              Simpson 1/3 y 3/8
+            </button>
           </div>
-        </div>
+          <div class="nav-group">
+            <h2>Búsqueda de raíces</h2>
+            <button
+              type="button"
+              class="method-btn"
+              data-method="grafico"
+              aria-pressed="false"
+              onclick="runMethod('grafico', this)"
+            >
+              Método gráfico
+            </button>
+            <button
+              type="button"
+              class="method-btn"
+              data-method="biseccion"
+              aria-pressed="false"
+              onclick="runMethod('biseccion', this)"
+            >
+              Bisección
+            </button>
+            <button
+              type="button"
+              class="method-btn"
+              data-method="newton_raphson"
+              aria-pressed="false"
+              onclick="runMethod('newton_raphson', this)"
+            >
+              Newton-Raphson
+            </button>
+            <button
+              type="button"
+              class="method-btn"
+              data-method="secante"
+              aria-pressed="false"
+              onclick="runMethod('secante', this)"
+            >
+              Secante
+            </button>
+          </div>
+        </nav>
+        <a
+          class="source-link"
+          href="https://github.com/Sositauwu/Metodos-numericos--Proyecto"
+          target="_blank"
+          rel="noopener noreferrer"
+          >Código del proyecto <span aria-hidden="true">↗</span></a
+        >
+      </aside>
+
+      <div class="main-column">
+        <header class="institution-bar">
+          <div class="institution">
+            <img
+              src="assets/escudo_unmsm.png"
+              width="30"
+              height="38"
+              alt="Escudo UNMSM"
+            /><span>Universidad Nacional Mayor de San Marcos</span>
+          </div>
+          <div class="faculty">
+            <span>FIEE</span
+            ><img
+              src="assets/escudo_fiee.png"
+              width="34"
+              height="38"
+              alt="Escudo FIEE"
+            />
+          </div>
+        </header>
+        <main id="analysis" class="main-content" tabindex="-1">
+          <div class="page-heading">
+            <div>
+              <h1>Métodos numéricos</h1>
+              <p>
+                Analiza tus datos. Explora el método. Comprueba el resultado.
+              </p>
+            </div>
+            <span
+              class="local-note"
+              title="Los archivos se procesan en tu navegador y no se envían a un servidor."
+              >Tus datos se quedan aquí</span
+            >
+          </div>
+
+          <section class="data-section" aria-labelledby="dataHeading">
+            <div class="section-heading">
+              <h2 id="dataHeading">Datos de entrada</h2>
+              <button
+                type="button"
+                class="text-button"
+                id="sourceToggle"
+                aria-expanded="false"
+                aria-controls="sourceControls"
+              >
+                Cambiar datos
+              </button>
+            </div>
+            <div id="sourceControls" class="source-controls" hidden hidden>
+              <div class="upload-column">
+                <label
+                  class="file-drop-area"
+                  id="fileDrop"
+                  for="excelFileInput"
+                >
+                  <svg
+                    width="24"
+                    height="24"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.6"
+                    aria-hidden="true"
+                  >
+                    <path
+                      d="M12 16V3m-4 4 4-4 4 4M4 14v5a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5"
+                    />
+                  </svg>
+                  <span
+                    ><strong>Sube o arrastra tu archivo</strong
+                    ><span>Excel o CSV con columnas X e Y</span></span
+                  >
+                  <input
+                    type="file"
+                    name="dataFile"
+                    id="excelFileInput"
+                    accept=".xlsx,.xls,.csv"
+                    aria-label="Subir archivo Excel o CSV"
+                  />
+                </label>
+                <div class="header-mode">
+                  <label for="hdrMode">Primera fila</label
+                  ><select id="hdrMode" name="headerMode">
+                    <option value="auto">Detectar encabezado</option>
+                    <option value="yes">Es encabezado</option>
+                    <option value="no">Son datos</option>
+                  </select>
+                </div>
+              </div>
+              <div class="demo-column">
+                <label for="demoSelect">O explora una simulación</label>
+                <div class="demo-row">
+                  <select id="demoSelect" name="demo">
+                    <option value="rc_carga">Circuito RC: carga</option>
+                    <option value="rc_descarga">Circuito RC: descarga</option>
+                    <option value="rlc">Circuito RLC subamortiguado</option>
+                    <option value="rc_ruido">
+                      RC con ruido (29 puntos)
+                    </option></select
+                  ><button
+                    type="button"
+                    class="primary-button"
+                    onclick="loadDemoCircuitData()"
+                  >
+                    Cargar demo
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  class="text-button download-sample"
+                  onclick="downloadSampleExcel()"
+                >
+                  Descargar Excel de ejemplo <span aria-hidden="true">↓</span>
+                </button>
+              </div>
+            </div>
+            <div id="colSelector" class="col-selector">
+              <div>
+                <label for="colXSel">Columna X</label
+                ><select id="colXSel" name="columnX"></select>
+              </div>
+              <div>
+                <label for="colYSel">Columna Y</label
+                ><select id="colYSel" name="columnY"></select>
+              </div>
+            </div>
+            <div class="data-context">
+              <span id="sourceName">Simulación RC: carga</span
+              ><span id="dataStatus" class="status-badge" role="status"></span>
+            </div>
+            <p id="fileError" class="warn-box" role="alert" hidden></p>
+          </section>
+
+          <section
+            id="workspace"
+            class="workspace"
+            aria-labelledby="methodTitle"
+          >
+            <div class="method-heading">
+              <div>
+                <p id="methodCategory" class="method-category">Interpolación</p>
+                <h2 id="methodTitle">Interpolación de Lagrange</h2>
+              </div>
+              <div class="export-bar">
+                <button
+                  type="button"
+                  class="secondary-button"
+                  onclick="downloadChartPNG()"
+                >
+                  Guardar gráfica <span aria-hidden="true">↓</span></button
+                ><button
+                  type="button"
+                  class="secondary-button"
+                  onclick="downloadResultsExcel()"
+                >
+                  Exportar Excel <span aria-hidden="true">↓</span>
+                </button>
+              </div>
+            </div>
+            <div class="params-bar" id="parameterPanel">
+              <div class="param-group" data-params="interpolation">
+                <label for="evalX">Evaluar en X</label
+                ><input
+                  type="number"
+                  name="evalX"
+                  id="evalX"
+                  step="any"
+                  value="1.0"
+                />
+              </div>
+              <div class="param-group" data-params="polynomial">
+                <label for="nNodes">Nodos cercanos</label
+                ><input
+                  type="number"
+                  name="nodes"
+                  id="nNodes"
+                  step="1"
+                  min="0"
+                  value="5"
+                  aria-describedby="nodesHint"
+                /><small id="nodesHint">0 = todos los nodos</small>
+              </div>
+              <div class="param-group" data-params="roots">
+                <label for="targetY">Valor de Y<sub>ref</sub></label
+                ><input
+                  type="number"
+                  name="targetY"
+                  id="targetY"
+                  step="any"
+                  value="3.0"
+                />
+              </div>
+              <div class="param-group" data-params="roots">
+                <label for="rootTol">Tolerancia |Δx|</label
+                ><input
+                  type="number"
+                  name="tolerance"
+                  id="rootTol"
+                  step="any"
+                  value="0.0001"
+                />
+              </div>
+              <div class="param-group" data-params="roots">
+                <label for="rootA">Inicio del intervalo (a)</label
+                ><input
+                  type="number"
+                  name="rootA"
+                  id="rootA"
+                  step="any"
+                  placeholder="Automático…"
+                />
+              </div>
+              <div class="param-group" data-params="roots">
+                <label for="rootB">Fin del intervalo (b)</label
+                ><input
+                  type="number"
+                  name="rootB"
+                  id="rootB"
+                  step="any"
+                  placeholder="Automático…"
+                />
+              </div>
+              <div class="param-group function-param" data-params="roots">
+                <label for="fExpr">Función exacta f(x), opcional</label
+                ><input
+                  type="text"
+                  name="function"
+                  id="fExpr"
+                  placeholder="Ej. 5*(1-exp(-x/1.2))…"
+                  autocomplete="off"
+                  spellcheck="false"
+                  aria-describedby="functionHint"
+                /><small id="functionHint"
+                  >Vacía: usa el spline de tus datos. Admite sin, cos, exp, ln,
+                  sqrt y ^.</small
+                >
+              </div>
+              <p id="domainNote" class="domain-note" hidden>
+                El cálculo utiliza todo el intervalo de tus datos.
+              </p>
+              <button
+                type="button"
+                id="recalculate"
+                class="primary-button recalculate"
+                onclick="runMethod(currentMethod)"
+              >
+                Recalcular
+              </button>
+            </div>
+            <div id="paramWarn" class="warn-box" role="alert"></div>
+            <div class="analysis-surface">
+              <div class="result-banner">
+                <p id="methodSummary" aria-live="polite"></p>
+                <div
+                  id="methodFormula"
+                  class="formula-box"
+                  style="display: none"
+                ></div>
+              </div>
+              <div class="chart-heading">
+                <h3>Visualización del método</h3>
+                <span>Acerca el cursor para explorar los puntos</span>
+              </div>
+              <div class="chart-container">
+                <canvas
+                  id="mainChart"
+                  role="img"
+                  aria-label="Gráfica del método seleccionado"
+                ></canvas>
+              </div>
+              <div class="conv-container" id="convContainer">
+                <canvas
+                  id="convChart"
+                  role="img"
+                  aria-label="Gráfica de convergencia del error por iteración"
+                ></canvas>
+              </div>
+              <details class="how-box" id="howBox">
+                <summary>Cómo funciona este método</summary>
+                <div class="how-text" id="howText"></div>
+              </details>
+            </div>
+            <section
+              class="table-card"
+              id="methodTableCard"
+              aria-labelledby="methodTableTitle"
+            >
+              <h3 id="methodTableTitle">Cálculos e iteraciones</h3>
+              <div
+                class="table-scroll"
+                tabindex="0"
+                role="region"
+                aria-label="Tabla de cálculos, desplazamiento horizontal"
+              >
+                <table id="methodTable"></table>
+              </div>
+            </section>
+            <details class="raw-data" id="rawTableCard">
+              <summary id="rawTableTitle">Datos originales</summary>
+              <div
+                class="table-scroll"
+                tabindex="0"
+                role="region"
+                aria-label="Tabla de datos originales, desplazamiento horizontal"
+              >
+                <table id="rawDataTable"></table>
+              </div>
+            </details>
+          </section>
+        </main>
+        <footer class="footer-card">
+          <div>
+            <strong>FIEE · UNMSM</strong
+            ><span>Facultad de Ingeniería Electrónica y Eléctrica · 2026</span>
+          </div>
+          <details>
+            <summary>Equipo del proyecto</summary>
+            <div class="project-credits">
+              <p><strong>Docente:</strong> Josué Miranda</p>
+              <ul class="members">
+                <li>Astrid Tello Vilchez</li>
+                <li>Haniel Castellano Guarachi</li>
+                <li>Jahzeel Sosa Gómez</li>
+                <li>Jeanpier Chavez Campos</li>
+              </ul>
+            </div>
+          </details>
+        </footer>
       </div>
-    </section>
-  </main>
-
-  <footer class="footer-card">
-    <div><strong>Curso:</strong> Métodos Numéricos | <strong>Docente:</strong> Josué Miranda</div>
-    <div><strong>Integrantes:</strong></div>
-    <ul class="members">
-      <li>Astrid Tello Vilchez</li>
-      <li>Haniel Castellano Guarachi</li>
-      <li>Jahzeel Sosa Gómez</li>
-      <li>Jeanpier Chavez Campos</li>
-    </ul>
-    <div>Universidad Nacional Mayor de San Marcos - 2026</div>
-  </footer>
-
-  <script src="app.js"></script>
-</body>
+    </div>
+    <noscript
+      >Activa JavaScript en tu navegador para usar las calculadoras de métodos
+      numéricos.</noscript
+    >
+  </body>
 </html>

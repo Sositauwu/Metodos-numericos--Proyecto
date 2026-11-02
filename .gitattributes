@@ -1,0 +1,11 @@
+* text=auto
+*.html text eol=lf
+*.css text eol=lf
+*.js text eol=lf
+*.json text eol=lf
+*.yaml text eol=lf
+*.md text eol=lf
+*.ttf binary
+*.png binary
+*.ico binary
+*.xlsx binary
