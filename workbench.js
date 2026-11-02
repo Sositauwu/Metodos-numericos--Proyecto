@@ -9,6 +9,7 @@
   const storageKey = "numerical-lab-experiments-v1";
   let state, comparison = null, currentStep = null, playback = null, timer = null;
   let saved = [];
+  let deletedExperiment = null;
   let storageAvailable = true;
   const number = (value) => Number.isFinite(value) ? Number(value.toPrecision(7)).toString() : "—";
   const notice = (message) => { $("workbenchNotice").textContent = message; };
@@ -28,7 +29,7 @@
     const chart = state.chart;
     const retained = new Map(chart.data.datasets.map((series) => [series.id, series]));
     chart.data.datasets = chart.data.datasets.filter((series) => !series.id?.startsWith("tool-"));
-    if (comparison && $("comparePanel").open && state.valid) {
+    if (comparison && Number.isFinite(comparison.value) && $("comparePanel").open && state.valid) {
       chart.data.datasets.push({ id: "tool-comparison", label: comparison.label,
         data: comparison.points.length ? comparison.points : [{ x: comparison.value, y: 0 }],
         borderColor: contrast, backgroundColor: contrast, borderDash: [5, 4],
@@ -121,12 +122,14 @@
       for (const item of [first, comparison]) {
         const title = document.createElement("dt"), value = document.createElement("dd");
         title.textContent = item.label;
-        value.textContent = number(item.value) + (state.primary?.unit ? " " + state.primary.unit : "")
+        value.textContent = (Number.isFinite(item.value) ? number(item.value) + (state.primary?.unit ? " " + state.primary.unit : "") : "Sin convergencia: " + (item.reason || "No se confirmó una raíz."))
           + (item.iterations === null ? "" : " · " + item.iterations + " iteraciones · |g(x)| = " + number(item.residual));
         result.append(title, value);
       }
       const difference = document.createElement("p");
-      difference.textContent = "Diferencia absoluta: " + number(Math.abs(first.value - comparison.value)) + (state.primary?.unit ? " " + state.primary.unit : "") + ".";
+      difference.textContent = Number.isFinite(first.value) && Number.isFinite(comparison.value)
+        ? "Diferencia absoluta: " + number(Math.abs(first.value - comparison.value)) + (state.primary?.unit ? " " + state.primary.unit : "") + "."
+        : "La diferencia requiere dos resultados convergentes; se conserva el estado de cada método.";
       result.append(difference);
       if (first.exact !== null) {
         const error = document.createElement("p");
@@ -171,6 +174,7 @@
     $("stepPanel").hidden = !state.valid || !state.iterations.length;
     $("iterationSlider").max = Math.max(1, state.iterations.length);
     $("saveExperiment").disabled = !state.valid || !storageAvailable;
+    $("resetParameters").disabled = ["trapecio", "simpson"].includes(state.method);
     if ($("stepPanel").open && state.valid && state.iterations.length) selectStep(0);
     refreshComparison();
   }
@@ -222,8 +226,24 @@
     catch (error) { notice(error.message); }
   });
   $("deleteExperiment").addEventListener("click", () => {
-    try { persist(saved.filter((item) => item.id !== $("experimentList").value)); renderSaved(); notice("Experimento eliminado del navegador."); }
+    try {
+      const index = saved.findIndex((item) => item.id === $("experimentList").value);
+      if (index < 0) return;
+      const removed = { item: saved[index], index };
+      persist(saved.filter((_, i) => i !== index)); deletedExperiment = removed;
+      renderSaved(); $("undoDeleteExperiment").hidden = false;
+      notice("Experimento eliminado. Puedes deshacer la eliminación.");
+    }
     catch { notice("No se pudo eliminar el experimento del almacenamiento."); }
+  });
+  $("undoDeleteExperiment").addEventListener("click", () => {
+    if (!deletedExperiment) return;
+    try {
+      if (saved.length >= 5) throw new Error("Ya hay cinco experimentos. Libera un espacio para recuperar el eliminado.");
+      const next = [...saved]; next.splice(Math.min(deletedExperiment.index, next.length), 0, deletedExperiment.item);
+      persist(next); renderSaved(deletedExperiment.item.id); deletedExperiment = null;
+      $("undoDeleteExperiment").hidden = true; notice("Experimento recuperado.");
+    } catch (error) { notice(error.message); }
   });
   $("resetParameters").addEventListener("click", () => { lab.reset(); notice("Parámetros restablecidos para los datos actuales."); });
   $("exploreX").addEventListener("input", () => selectX(Number($("exploreX").value), true));
@@ -251,6 +271,13 @@
   window.addEventListener("lab:themechange", () => { if (state) decorations(); });
   window.LabWorkbench = {
     selectX, onResult,
+    reportContext: () => {
+      stopPlayback();
+      return {
+        comparison: $("comparePanel").open && state?.valid && $("compareMethod").value ? [lab.compare(state.method), lab.compare($("compareMethod").value)] : [],
+        step: currentStep !== null && $("stepPanel").open ? $("iterationDescription").textContent : null,
+      };
+    },
     beforeRun: () => { clearSteps(); comparison = null; notice(""); },
     pending: () => {
       clearSteps(); comparison = null;

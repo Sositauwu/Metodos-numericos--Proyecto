@@ -25,6 +25,7 @@
     <script src="motion.js" defer></script>
     <script src="app.js" defer></script>
     <script src="workbench.js" defer></script>
+    <script src="report.js" defer></script>
   </head>
   <body>
     <a class="skip-link" href="#analysis">Saltar al análisis</a>
@@ -314,15 +315,23 @@
                 </div>
               </div>
               <div class="demo-column">
-                <label for="demoSelect">O explora una simulación</label>
+                <label for="demoSelect">O explora un ejemplo</label>
                 <div class="demo-row">
                   <select id="demoSelect" name="demo">
+                    <optgroup label="Circuitos">
                     <option value="rc_carga">Circuito RC: carga</option>
                     <option value="rc_descarga">Circuito RC: descarga</option>
                     <option value="rlc">Circuito RLC subamortiguado</option>
                     <option value="rc_ruido">
                       RC con ruido (29 puntos)
-                    </option></select
+                    </option>
+                    </optgroup>
+                    <optgroup label="Ejemplos didácticos">
+                      <option value="runge_uniform">Runge · nodos uniformes</option>
+                      <option value="runge_chebyshev">Runge · nodos de Chebyshev</option>
+                      <option value="irregular_cubic">Integración · malla irregular</option>
+                      <option value="newton_cycle">Newton · ciclo sin convergencia</option>
+                    </optgroup></select
                   ><button
                     type="button"
                     class="primary-button"
@@ -355,6 +364,8 @@
               ><span id="dataStatus" class="status-badge" role="status"></span>
             </div>
             <p id="fileError" class="warn-box" role="alert" hidden></p>
+            <p id="fileReadStatus" class="file-read-status" role="status"></p>
+            <p id="demoObservation" class="demo-observation"></p>
           </section>
 
           <section
@@ -381,6 +392,7 @@
                 >
                   Exportar Excel <span aria-hidden="true">↓</span>
                 </button>
+                <button type="button" class="secondary-button" id="downloadReport">Informe de práctica</button>
               </div>
             </div>
             <div class="params-bar" id="parameterPanel">
@@ -504,6 +516,7 @@
                   <div class="tool-actions">
                     <button class="secondary-button" id="restoreExperiment" type="button">Restaurar</button>
                     <button class="text-button" id="deleteExperiment" type="button">Eliminar guardado</button>
+                    <button class="text-button" id="undoDeleteExperiment" type="button" hidden>Deshacer eliminación</button>
                   </div>
                   <button class="text-button" id="resetParameters" type="button">Restablecer parámetros del método</button>
                 </div>

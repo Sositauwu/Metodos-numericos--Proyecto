@@ -72,6 +72,7 @@ let currentMethod = "lagrange";
 let lastRows = null; // filas crudas del último archivo / demo (para re-elegir columnas)
 let colIdxX = 0,
   colIdxY = 1; // columnas elegidas
+let currentDemoKey = null;
 let currentAnalytic = null; // solución analítica del demo activo (null si se cargó un archivo)
 let lastTable = null; // tabla del método (valores crudos, sin redondear) para exportar a Excel
 let P = null; // parámetros validados de la última ejecución
@@ -133,46 +134,44 @@ function parseCSVText(text) {
 $("excelFileInput").addEventListener("click", function () {
   this.value = "";
 });
+let importTicket = 0;
+let pendingReader = null;
+function finishImport(message = "") {
+  $("fileReadStatus").textContent = message;
+  $("excelFileInput").setAttribute("aria-busy", "false");
+}
+function cancelPendingImport() {
+  importTicket++;
+  if (pendingReader?.readyState === 1) pendingReader.abort();
+  pendingReader = null;
+  finishImport();
+}
 function readDataFile(file) {
   if (!file) return;
+  cancelPendingImport();
+  const ticket = importTicket;
   showFileError("");
-  if (!/\.(csv|xlsx|xls)$/i.test(file.name)) {
-    showFileError(
-      "Elige un archivo .xlsx, .xls o .csv con dos columnas numéricas.",
-    );
-    return;
-  }
+  if (!/\.(csv|xlsx|xls)$/i.test(file.name)) { showFileError("Elige un archivo .xlsx, .xls o .csv con dos columnas numéricas."); return; }
+  $("fileReadStatus").textContent = "Leyendo «" + file.name + "»…";
+  $("excelFileInput").setAttribute("aria-busy", "true");
   const isCsv = /\.csv$/i.test(file.name);
-
-  const reader = new FileReader();
+  const reader = new FileReader(); pendingReader = reader;
   reader.onload = function (evt) {
+    if (ticket !== importTicket) return;
     try {
       let rows;
-      if (isCsv) {
-        rows = parseCSVText(evt.target.result);
-      } else {
-        const workbook = XLSX.read(new Uint8Array(evt.target.result), {
-          type: "array",
-        });
-        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-        rows = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+      if (isCsv) rows = parseCSVText(evt.target.result);
+      else {
+        const workbook = XLSX.read(new Uint8Array(evt.target.result), { type: "array" });
+        rows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { header: 1 });
       }
-      currentAnalytic = null;
-      colIdxX = 0;
-      colIdxY = 1;
-      if (processRawRows(rows)) $("sourceName").textContent = file.name;
-    } catch (err) {
-      console.error(err);
-      showFileError(
-        "No se pudo leer el archivo. Verifica que sea un .xlsx, .xls o .csv válido con al menos dos columnas numéricas (X, Y).",
-      );
-    }
+      processRawRows(rows, { resetColumns: true, analytic: null, demoKey: null, source: file.name });
+    } catch {
+      showFileError("No se pudo leer el archivo. Verifica que tenga al menos dos columnas numéricas (X, Y).");
+    } finally { pendingReader = null; finishImport(); }
   };
-  reader.onerror = function () {
-    showFileError("No se pudo abrir el archivo. Vuelve a seleccionarlo.");
-  };
-  if (isCsv) reader.readAsText(file);
-  else reader.readAsArrayBuffer(file);
+  reader.onerror = () => { if (ticket === importTicket) { pendingReader = null; finishImport(); showFileError("No se pudo abrir el archivo. Vuelve a seleccionarlo."); } };
+  if (isCsv) reader.readAsText(file); else reader.readAsArrayBuffer(file);
 }
 $("excelFileInput").addEventListener("change", (e) =>
   readDataFile(e.target.files[0]),
@@ -209,17 +208,17 @@ function onColumnChange() {
     $("colYSel").value = colIdxY;
     return;
   }
-  colIdxX = nx;
-  colIdxY = ny;
-  if (lastRows) processRawRows(lastRows);
+  if (lastRows && !processRawRows(lastRows, { columns: [nx, ny], analytic: null, demoKey: null })) {
+    $("colXSel").value = colIdxX; $("colYSel").value = colIdxY;
+  }
 }
 $("hdrMode").addEventListener("change", () => {
-  if (lastRows) processRawRows(lastRows);
+  if (lastRows) processRawRows(lastRows, { analytic: null, demoKey: null });
 });
 $("colXSel").addEventListener("change", onColumnChange);
 $("colYSel").addEventListener("change", onColumnChange);
 
-function processRawRows(rows) {
+function processRawRows(rows, context = {}) {
   if (!rows || rows.length < 2) {
     showFileError(
       "El archivo debe contener al menos 2 filas de datos numéricos.",
@@ -233,27 +232,26 @@ function processRawRows(rows) {
     showFileError("El archivo necesita al menos dos columnas (X, Y).");
     return;
   }
-  lastRows = rows;
-  if (colIdxX >= ncols) colIdxX = 0;
-  if (colIdxY >= ncols || colIdxY === colIdxX) colIdxY = colIdxX === 0 ? 1 : 0;
+  let selectedX = context.resetColumns ? 0 : context.columns?.[0] ?? colIdxX;
+  let selectedY = context.resetColumns ? 1 : context.columns?.[1] ?? colIdxY;
+  if (selectedX >= ncols) selectedX = 0;
+  if (selectedY >= ncols || selectedY === selectedX) selectedY = selectedX === 0 ? 1 : 0;
 
   // Detectar si la primera fila tiene encabezados de texto (en las columnas elegidas)
   const first = rows[0] || [];
-  const hdrMode = $("hdrMode").value;
+  const hdrMode = context.headerMode || $("hdrMode").value;
   const hasHeader =
     hdrMode === "yes"
       ? true
       : hdrMode === "no"
         ? false
-        : isNaN(toNum(first[colIdxX])) || isNaN(toNum(first[colIdxY]));
+        : isNaN(toNum(first[selectedX])) || isNaN(toNum(first[selectedY]));
   const startIdx = hasHeader ? 1 : 0;
   const nameOf = (idx, fallback) =>
     hasHeader && first[idx] !== undefined && String(first[idx]).trim() !== ""
       ? String(first[idx])
       : fallback;
-  colXName = nameOf(colIdxX, "X");
-  colYName = nameOf(colIdxY, "Y");
-  setupColumnSelectors(rows, ncols);
+  const nextXName = nameOf(selectedX, "X"), nextYName = nameOf(selectedY, "Y");
 
   let pairs = [];
   let ignored = 0;
@@ -264,8 +262,8 @@ function processRawRows(rows) {
       !r.some((c) => c !== undefined && c !== null && String(c).trim() !== "")
     )
       continue; // fila vacía
-    const xv = toNum(r[colIdxX]);
-    const yv = toNum(r[colIdxY]);
+    const xv = toNum(r[selectedX]);
+    const yv = toNum(r[selectedY]);
     if (isFinite(xv) && isFinite(yv)) pairs.push({ x: xv, y: yv });
     else ignored++;
   }
@@ -290,6 +288,14 @@ function processRawRows(rows) {
     return;
   }
 
+  lastRows = rows; colIdxX = selectedX; colIdxY = selectedY;
+  colXName = nextXName; colYName = nextYName;
+  if (Object.hasOwn(context, "analytic")) currentAnalytic = context.analytic;
+  if (Object.hasOwn(context, "demoKey")) currentDemoKey = context.demoKey;
+  if (context.headerMode) $("hdrMode").value = context.headerMode;
+  if (context.source) $("sourceName").textContent = context.source;
+  $("demoObservation").textContent = currentDemoKey ? DEMO_SETS[currentDemoKey]?.guide || "" : "";
+  setupColumnSelectors(rows, ncols);
   xData = uniquePairs.map((p) => p.x);
   yData = uniquePairs.map((p) => p.y);
 
@@ -413,22 +419,49 @@ const DEMO_SETS = {
   },
 };
 
+const A_RUNGE = {
+  label: "f(x) = 1/(1+25x²)", f: (x) => 1 / (1 + 25 * x * x),
+  df: (x) => -50 * x / (1 + 25 * x * x) ** 2, F: (x) => Math.atan(5 * x) / 5,
+};
+const A_CUBIC = { label: "f(x) = x³", f: (x) => x ** 3, df: (x) => 3 * x * x, F: (x) => x ** 4 / 4 };
+const A_CYCLE = { label: "f(x) = x³−2x+2", f: (x) => x ** 3 - 2 * x + 2, df: (x) => 3 * x * x - 2, F: (x) => x ** 4 / 4 - x * x + 2 * x };
+const exampleRows = (xs, fn) => [["X", "f(X)"], ...xs.map((x) => [x, fn(x)])];
+Object.assign(DEMO_SETS, {
+  runge_uniform: {
+    analytic: A_RUNGE, rows: exampleRows(Array.from({ length: 21 }, (_, i) => -1 + i / 10), A_RUNGE.f),
+    method: "lagrange", params: { evalX: 0.95, nNodes: 0, targetY: 0.5 },
+    guide: "Qué observar: interpola los 21 nodos uniformes con un polinomio de grado 20 y explora cerca de los extremos. Las oscilaciones de Runge son parte del experimento. Contrasta después con los nodos de Chebyshev o con un spline.",
+  },
+  runge_chebyshev: {
+    analytic: A_RUNGE, rows: exampleRows(Array.from({ length: 21 }, (_, i) => Math.cos(Math.PI * i / 20)).sort((a, b) => a - b), A_RUNGE.f),
+    method: "lagrange", params: { evalX: 0.95, nNodes: 0, targetY: 0.5 },
+    guide: "Qué observar: la función y el grado son los mismos que en Runge uniforme. Estos 21 nodos de Chebyshev-Lobatto se concentran cerca de los extremos; observa cómo cambia el error sin cambiar de método.",
+  },
+  irregular_cubic: {
+    analytic: A_CUBIC, rows: exampleRows([0, 0.1, 0.4, 0.9, 1.3, 2], A_CUBIC.f),
+    method: "simpson", params: { evalX: 0.8, targetY: 2 },
+    guide: "Qué observar: los puntos de x³ no están igualmente espaciados. Compara Trapecio y Simpson con la integral exacta, 4. Simpson generalizado admite esta malla, pero no conserva automáticamente el orden de error de una malla uniforme.",
+  },
+  newton_cycle: {
+    analytic: A_CYCLE, rows: exampleRows(Array.from({ length: 17 }, (_, i) => -2 + i / 4), A_CYCLE.f),
+    method: "newton_raphson", params: { fExpr: "x^3-2*x+2", targetY: 0, rootA: -2, rootB: 2, rootTol: 0.000001 },
+    guide: "Qué observar: Newton comienza en 0 y alterna entre 0 y 1. Recorre los pasos para ver el ciclo; aquí informar «sin convergencia» es correcto. Compara con Bisección sobre el mismo intervalo para encontrar la raíz negativa.",
+  },
+});
+
 function currentDemo() {
   const sel = $("demoSelect");
   return DEMO_SETS[sel ? sel.value : "rc_carga"] || DEMO_SETS.rc_carga;
 }
 
 function loadDemoCircuitData() {
+  cancelPendingImport();
   const demo = currentDemo();
-  $("hdrMode").value = "auto";
-  $("evalX").value = 1.0;
-  $("targetY").value = 3.0;
-  currentAnalytic = demo.analytic;
-  colIdxX = 0;
-  colIdxY = 1;
-  if (processRawRows(demo.rows))
-    $("sourceName").textContent =
-      "Simulación: " + $("demoSelect").selectedOptions[0].textContent;
+  const defaults = { evalX: 1, targetY: 3, rootTol: 0.0001, rootA: "", rootB: "", fExpr: "", nNodes: Math.min(5, demo.rows.length - 1), ...demo.params };
+  Object.entries(defaults).forEach(([id, value]) => { $(id).value = value; });
+  if (demo.method) currentMethod = demo.method;
+  const label = $("demoSelect").selectedOptions[0].textContent;
+  processRawRows(demo.rows, { resetColumns: true, headerMode: "auto", analytic: demo.analytic, demoKey: $("demoSelect").value, source: (demo.guide ? "Ejemplo: " : "Simulación: ") + label });
 }
 
 function downloadSampleExcel() {
@@ -879,15 +912,45 @@ function computeSimpson(xs, ys, splines) {
 }
 
 // --- 3.8 BÚSQUEDA DE RAÍCES: cruces de signo en una malla fina ---
-function findBrackets(g, a, b, N) {
+function changesSign(a, b) {
+  return Number.isFinite(a) && Number.isFinite(b) && (a === 0 || b === 0 || Math.sign(a) !== Math.sign(b));
+}
+// A small local/reference residual is required in addition to a small X step.
+// A far-away large derivative must never turn a nonzero residual into a root.
+function rootResidualCheck(g, a, b, tol, yRef = 0) {
+  const samples = [a, a + (b - a) / 2, b].map((x) => Math.abs(g(x))).filter((v) => Number.isFinite(v) && v > 0);
+  const reference = samples.length ? Math.min(...samples) : Number.MIN_VALUE;
+  return (x) => {
+    if (!Number.isFinite(x)) return false;
+    const value = g(x);
+    const roundoff = 32 * Number.EPSILON * (Math.abs(yRef) + Math.abs(value));
+    return Number.isFinite(value) && Math.abs(value) <= Math.max(Math.max(tol, 1e-12) * reference, roundoff);
+  };
+}
+function validRootBracket(g, a, b, tol = 1e-8, yRef = 0) {
+  let fa = g(a), fb = g(b);
+  if (!changesSign(fa, fb)) return false;
+  if (fa === 0 || fb === 0) return true;
+  const accepted = rootResidualCheck(g, a, b, tol, yRef);
+  for (let i = 0; i < 64; i++) {
+    const x = a + (b - a) / 2, fx = g(x);
+    if (!Number.isFinite(fx)) return false;
+    if (fx === 0 || accepted(x)) return true;
+    if (x === a || x === b) return false;
+    if (changesSign(fa, fx)) { b = x; fb = fx; } else { a = x; fa = fx; }
+  }
+  return false;
+}
+function findBrackets(g, a, b, N, { tol = 1e-8, yRef = 0 } = {}) {
   const res = [];
   const pts = Array.from({ length: N + 1 }, (_, i) => a + ((b - a) * i) / N);
-  const gv = pts.map(g);
+  const values = pts.map(g);
   for (let i = 0; i < N; i++) {
-    if (gv[i] === 0) res.push({ a: pts[i], b: pts[i] });
-    else if (gv[i] * gv[i + 1] < 0) res.push({ a: pts[i], b: pts[i + 1] });
+    if (values[i] === 0) res.push({ a: pts[i], b: pts[i] });
+    else if (values[i + 1] !== 0 && changesSign(values[i], values[i + 1]) && validRootBracket(g, pts[i], pts[i + 1], tol, yRef))
+      res.push({ a: pts[i], b: pts[i + 1] });
   }
-  if (gv[N] === 0) res.push({ a: pts[N], b: pts[N] });
+  if (values[N] === 0) res.push({ a: pts[N], b: pts[N] });
   return res;
 }
 
@@ -970,6 +1033,12 @@ const METHOD_NAMES = {
   newton_raphson: "Newton-Raphson", secante: "Secante",
 };
 const PARAM_IDS = ["evalX", "nNodes", "targetY", "rootTol", "rootA", "rootB", "fExpr"];
+function activeParamIds(method) {
+  if (["lagrange", "newton_dd", "matricial"].includes(method)) return ["evalX", "nNodes"];
+  if (["splines", "derivadas"].includes(method)) return ["evalX"];
+  if (["grafico", "biseccion", "newton_raphson", "secante"].includes(method)) return ["targetY", "rootTol", "rootA", "rootB", "fExpr"];
+  return [];
+}
 function getParams() {
   const errors = [];
   PARAM_IDS.forEach((id) => {
@@ -1037,20 +1106,13 @@ function showParamWarnings(list) {
   }
 }
 
-// Selecciona los n nodos contiguos más cercanos a xEval (n=0 => todos)
+// Elegir por distancia y ordenar después por X conserva los pares de datos.
 function pickNodes(xEval, count = P.nNodes) {
-  const total = xData.length;
-  const n = count;
-  if (!(n >= 2) || n >= total) return { xs: xData, ys: yData, all: true };
-  let idx = xData.findIndex((x) => x >= xEval);
-  if (idx < 0) idx = total - 1;
-  let start = idx - Math.floor(n / 2);
-  start = Math.max(0, Math.min(total - n, start));
-  return {
-    xs: xData.slice(start, start + n),
-    ys: yData.slice(start, start + n),
-    all: false,
-  };
+  if (!(count >= 2) || count >= xData.length) return { xs: xData, ys: yData, all: true };
+  const indices = xData.map((_, i) => i)
+    .sort((i, j) => Math.abs(xData[i] - xEval) - Math.abs(xData[j] - xEval) || i - j)
+    .slice(0, count).sort((i, j) => i - j);
+  return { xs: indices.map((i) => xData[i]), ys: indices.map((i) => yData[i]), all: false };
 }
 
 // Resumen teórico de cada método (panel "¿Cómo funciona?")
@@ -1066,11 +1128,11 @@ const THEORY = {
   splines:
     "En cada tramo <code>Sᵢ(x) = aᵢ + bᵢ(x−xᵢ) + cᵢ(x−xᵢ)² + dᵢ(x−xᵢ)³</code>, con S, S' y S'' continuas y S'' = 0 en los extremos (spline natural). Evita las oscilaciones del polinomio de grado alto.",
   derivadas:
-    "Derivada del polinomio de 2º grado que pasa por 3 puntos consecutivos, evaluada en el nodo central: <code>f'(xᵢ) ≈ (yᵢ₊₁ − yᵢ₋₁)/(2h)</code> con paso constante. Error O(h²). Los extremos usan la fórmula unilateral de 3 puntos (también O(h²)). Vale para malla no uniforme.",
+    "Derivada del polinomio de 2º grado que pasa por 3 puntos consecutivos, evaluada en el nodo central: <code>f'(xᵢ) ≈ (yᵢ₊₁ − yᵢ₋₁)/(2h)</code> con paso constante. Error O(h²). Los extremos usan la fórmula unilateral de 3 puntos (también O(h²)). Vale para malla no uniforme. Si solo hay dos datos, se usa la pendiente de la recta y el esquema es O(h).",
   trapecio:
     "<code>I ≈ Σ (h/2)·(yᵢ + yᵢ₊₁)</code>: se reemplaza la curva por segmentos rectos en cada subintervalo. Error de orden O(h²). Con malla uniforme y n par se estima el error por Richardson comparando paso h y 2h: <code>E ≈ (T_h − T_2h)/3</code>.",
   simpson:
-    "Por cada par de subintervalos <code>[h₁, h₂]</code>: <code>I ≈ (h₁+h₂)/6·[(2 − h₂/h₁)y₀ + (h₁+h₂)²/(h₁h₂)·y₁ + (2 − h₁/h₂)y₂]</code>, que con h₁ = h₂ = h se reduce a <code>(h/3)(y₀ + 4y₁ + y₂)</code> y vale también en malla no uniforme. Si el número de subintervalos es impar, los últimos 3 se integran con Simpson 3/8 (cúbica por 4 nodos). Error O(h⁴).",
+    "Por cada par de subintervalos <code>[h₁, h₂]</code>: <code>I ≈ (h₁+h₂)/6·[(2 − h₂/h₁)y₀ + (h₁+h₂)²/(h₁h₂)·y₁ + (2 − h₁/h₂)y₂]</code>, que con h₁ = h₂ = h se reduce a <code>(h/3)(y₀ + 4y₁ + y₂)</code> y vale también en malla no uniforme. Si el número de subintervalos es impar, los últimos 3 se integran con Simpson 3/8 (cúbica por 4 nodos). En malla uniforme y para funciones suficientemente suaves, el error compuesto es O(h⁴); ese orden no se garantiza en una malla irregular arbitraria.",
   grafico:
     "Se grafica <code>g(x) = f(x) − Yref</code> y se buscan <strong>todos</strong> los cruces por cero (cambios de signo en una malla de 400 puntos). Cada raíz se estima con una interpolación lineal en su subintervalo. Es una aproximación visual." +
     NOTE_SPLINE,
@@ -1080,7 +1142,7 @@ const THEORY = {
   newton_raphson:
     "<code>xₖ₊₁ = xₖ − g(xₖ)/g'(xₖ)</code>. Converge de forma cuadrática si el punto inicial es bueno; falla si g'(x) ≈ 0 (el método se detiene y lo informa). Se detiene cuando <code>|xₖ₊₁ − xₖ|</code> es menor que la tolerancia y además |g(x)| es pequeño; si no hay raíz lo indica." +
     NOTE_SPLINE +
-    " La derivada g' sale de la derivada del spline. Arranca en el centro del intervalo de cambio de signo encontrado.",
+    " La derivada g' se obtiene del spline; si escribes f(x), se aproxima con diferencias centradas. Arranca en el centro del intervalo de cambio de signo encontrado.",
   secante:
     "<code>xₖ₊₁ = xₖ − g(xₖ)·(xₖ − xₖ₋₁)/(g(xₖ) − g(xₖ₋₁))</code>. Como Newton-Raphson pero sin derivada; converge más rápido que bisección (orden ≈ 1.618). Parte de los extremos del cambio de signo. Se detiene cuando <code>|xₖ₊₁ − xₖ|</code> es menor que la tolerancia y |g| es pequeño; informa si no converge." +
     NOTE_SPLINE,
@@ -1101,7 +1163,10 @@ const METHOD_GUIDES = {
 };
 
 function showTheory(methodName) {
-  $("howText").innerHTML = `<p class="simple-explanation">${METHOD_GUIDES[methodName] || ""}</p><h4>Detalle matemático</h4><div>${THEORY[methodName] || ""}</div>`;
+  const explanation = methodName === "derivadas" && xData.length === 2
+    ? "Con dos datos, estima el cambio de Y por cada unidad de X usando la pendiente de la recta que los une. La misma pendiente se muestra en ambos extremos."
+    : METHOD_GUIDES[methodName] || "";
+  $("howText").innerHTML = `<p class="simple-explanation">${explanation}</p><h4>Detalle matemático</h4><div>${THEORY[methodName] || ""}</div>`;
 }
 
 // Construye la tabla del método a partir de valores crudos (la exportación a Excel usa los valores sin redondear)
@@ -1728,8 +1793,8 @@ function runMethodCore(methodName) {
       const derivPoints = derivs.map((d) => ({ x: d.x, y: d.dy }));
 
       titleEl.textContent =
-        "Derivación Numérica: Diferencias Finitas Centradas, O(h²)";
-      let txt = `Se calculó la tasa de cambio <strong>dy/dx</strong> en cada nodo con diferencias <strong>centradas</strong> de 3 puntos (orden h²); en los extremos se usa la fórmula unilateral de 3 puntos.`;
+        xData.length < 3 ? "Derivación Numérica: Pendiente de dos puntos, O(h)" : "Derivación Numérica: Diferencias Finitas Centradas, O(h²)";
+      let txt = xData.length < 3 ? "Solo hay dos puntos: se usa la pendiente de la recta en ambos extremos, con error O(h) bajo las hipótesis usuales de suavidad." : `Se calculó la tasa de cambio <strong>dy/dx</strong> en cada nodo con diferencias <strong>centradas</strong> de 3 puntos (orden h²); en los extremos se usa la fórmula unilateral de 3 puntos.`;
       const headers = [
         "Nodo i",
         "xᵢ",
@@ -1934,14 +1999,13 @@ function runMethodCore(methodName) {
       { x: xMin, y: 0 },
       { x: xMax, y: 0 },
     ];
-    const gVals = curvePoints.map((p) => p.y);
+    const gVals = curvePoints.map((p) => p.y).filter(Number.isFinite);
     const fMin = Math.min(...gVals) + yRef,
       fMax = Math.max(...gVals) + yRef;
 
-    const allBr = findBrackets(g, xMin, xMax, 400); // todos los cruces del dominio
-    const intBr = findBrackets(g, rA, rB, 400); // cruces dentro de [a, b]
-    const maxDg = Math.max(1e-12, ...denseX.map((x) => Math.abs(dg(x))));
-    const resTol = 10 * tol * maxDg + 1e-9; // |g| máximo aceptable para dar la raíz por válida
+    const allBr = findBrackets(g, xMin, xMax, 400, { tol, yRef }); // todos los cruces del dominio
+    const intBr = findBrackets(g, rA, rB, 400, { tol, yRef }); // cruces dentro de [a, b]
+    const acceptableResidual = rootResidualCheck(g, rA, rB, tol, yRef);
     const refine = (br) =>
       br.a === br.b
         ? br.a
@@ -1950,13 +2014,13 @@ function runMethodCore(methodName) {
     const noRootMsg =
       allBr.length === 0
         ? yRef < fMin || yRef > fMax
-          ? `Y<sub>ref</sub> = ${yRef} está fuera del rango de f(x) en el dominio de los datos [${fMin.toFixed(4)}, ${fMax.toFixed(4)}]: no existe raíz.`
-          : `La curva no cruza Y<sub>ref</sub> = ${yRef} (a lo sumo lo toca), así que no hay cambio de signo.`
+          ? `Y<sub>ref</sub> = ${yRef} está fuera del rango de f(x) en el dominio de los datos [${fMin.toFixed(4)}, ${fMax.toFixed(4)}]: no se detectó una raíz en el muestreo.`
+          : `No se confirmó un cruce continuo y finito de Y<sub>ref</sub> = ${yRef}. Un cambio de signo en una discontinuidad no es una raíz.`
         : "";
 
     // Intervalo de trabajo: [a, b] del usuario si g cambia de signo en sus extremos; si no, el primer cruce interno
     let br = null;
-    if (g(rA) * g(rB) <= 0) br = { a: rA, b: rB, own: true };
+    if (validRootBracket(g, rA, rB, tol, yRef)) br = { a: rA, b: rB, own: true };
     else if (intBr.length) br = { a: intBr[0].a, b: intBr[0].b, own: false };
 
     let rootNote = "";
@@ -1969,7 +2033,7 @@ function runMethodCore(methodName) {
       : "";
 
     const rootAnalytic = (xr) => {
-      if (!currentAnalytic) return "";
+      if (!currentAnalytic || P.userF) return "";
       const r = currentAnalytic.f(xr) - yRef;
       return analyticNote(
         `Con la solución analítica ${currentAnalytic.label}: f(x<sub>r</sub>) − Y<sub>ref</sub> = ${r.toExponential(3)} (residuo de la raíz encontrada).`,
@@ -2007,7 +2071,7 @@ function runMethodCore(methodName) {
     // ¿el iterado final es realmente una raíz? (evita dar por buena una parada en el borde o un punto sin raíz)
     const verifyRoot = (x, conv, reasonIn, clamped) => {
       if (!conv) return { ok: false, reason: reasonIn };
-      if (Math.abs(g(x)) > resTol) {
+      if (!acceptableResidual(x)) {
         return {
           ok: false,
           reason: clamped
@@ -2078,14 +2142,14 @@ function runMethodCore(methodName) {
         hideRawY: true,
       });
     } else if (m === "biseccion") {
-      const { iters, x: xr, converged } = iterateRoot(m, { g, dg, br, rA, rB, xMin, xMax, tol });
+      const { iters, x: xr, converged, reason } = iterateRoot(m, { g, dg, br, rA, rB, xMin, xMax, tol, yRef });
 
       titleEl.textContent = `Método de Bisección (f(x) - ${yRef} = 0)`;
       if (!br) {
         summaryEl.innerHTML = `En [${rA.toFixed(4)}, ${rB.toFixed(4)}] g(x) no cambia de signo y no hay cruces internos, así que Bisección no puede garantizar una raíz. ${noRootMsg || "Ajusta el intervalo [a, b] o Y<sub>ref</sub>."}`;
       } else if (!converged) {
         summaryEl.innerHTML =
-          failHtml("se agotaron las 60 iteraciones", xr) + rootNoteHtml;
+          failHtml(reason || "no se alcanzó una raíz con residuo válido", xr) + rootNoteHtml;
       } else {
         summaryEl.innerHTML =
           `Partiendo de [${br.a.toFixed(4)}, ${br.b.toFixed(4)}], la raíz converge en <strong>x = ${xr.toFixed(6)}</strong> tras <strong>${iters.length} iteraciones</strong> (donde f(x) alcanza el valor ${yRef}).` +
@@ -2115,7 +2179,7 @@ function runMethodCore(methodName) {
         "Error máx. (b−a)/2",
       );
     } else if (m === "newton_raphson") {
-      const { iters, x: xk, converged, reason, clamped } = iterateRoot(m, { g, dg, br, rA, rB, xMin, xMax, tol });
+      const { iters, x: xk, converged, reason, clamped } = iterateRoot(m, { g, dg, br, rA, rB, xMin, xMax, tol, yRef });
       const v = verifyRoot(xk, converged, reason, clamped);
 
       titleEl.textContent = `Método de Newton-Raphson (f(x) - ${yRef} = 0)`;
@@ -2141,7 +2205,7 @@ function runMethodCore(methodName) {
         "Error |Δx|",
       );
     } else if (m === "secante") {
-      const { iters, x: x1, converged, reason, clamped } = iterateRoot(m, { g, dg, br, rA, rB, xMin, xMax, tol });
+      const { iters, x: x1, converged, reason, clamped } = iterateRoot(m, { g, dg, br, rA, rB, xMin, xMax, tol, yRef });
       const v = verifyRoot(x1, converged, reason, clamped);
 
       titleEl.textContent = `Método de la Secante (f(x) - ${yRef} = 0)`;
@@ -2480,52 +2544,68 @@ document.addEventListener("keydown", (e) => {
 });
 
 // Structured calculation and session services shared by the interactive workbench.
-function iterateRoot(method, { g, dg, br, rA, rB, xMin, xMax, tol }) {
+function iterateRoot(method, { g, dg, br, rA, rB, xMin, xMax, tol, yRef = 0 }) {
   const iters = [];
   let x = NaN, converged = false, reason = "", clamped = false;
+  const accepted = rootResidualCheck(g, rA, rB, tol, yRef);
+  const done = () => ({ iters, x, converged, reason, clamped });
+  if (br) {
+    for (const endpoint of [br.a, br.b]) if (g(endpoint) === 0) { x = endpoint; converged = true; return done(); }
+  }
   if (method === "biseccion") {
     if (br) {
       let a = br.a, b = br.b;
       for (let k = 1; k <= 60; k++) {
-        x = (a + b) / 2;
-        const fxr = g(x), err = (b - a) / 2;
+        x = a + (b - a) / 2;
+        const fxr = g(x), fxa = g(a), err = (b - a) / 2;
+        if (!Number.isFinite(fxr) || !Number.isFinite(fxa)) { reason = "la función no es finita dentro del intervalo"; break; }
         iters.push({ k, a, b, xr: x, fxr, err });
-        if (err < tol || fxr === 0) { converged = true; break; }
-        if (g(a) * fxr <= 0) b = x; else a = x;
+        if (fxr === 0 || (err < tol && accepted(x))) { converged = true; break; }
+        if (x === a || x === b) { reason = "el intervalo dejó de reducirse sin alcanzar un residuo válido"; break; }
+        if (changesSign(fxa, fxr)) b = x; else a = x;
       }
     }
-    if (!converged) reason = br ? "se agotaron las 60 iteraciones" : "no hay un cruce en el intervalo";
+    if (!converged && !reason) reason = br ? "se agotaron las 60 iteraciones sin alcanzar el residuo requerido" : "no se confirmó un cruce continuo y finito en el intervalo";
   } else if (method === "newton_raphson") {
     x = br ? (br.a + br.b) / 2 : (rA + rB) / 2;
     for (let k = 1; k <= 30; k++) {
-      const fx = g(x), dfx = dg(x);
-      if (Math.abs(dfx) < 1e-12) { reason = "la pendiente es casi nula; el paso de Newton no está definido"; break; }
-      const raw = x - fx / dfx, xNext = Math.max(xMin, Math.min(xMax, raw));
+      const fx = g(x);
+      if (!Number.isFinite(fx)) { reason = "la función no es finita en el iterado"; break; }
+      if (fx === 0) { converged = true; break; }
+      const dfx = dg(x);
+      if (!Number.isFinite(dfx) || dfx === 0) { reason = "la pendiente es nula o no es finita; el paso de Newton no está definido"; break; }
+      const raw = x - fx / dfx;
+      if (!Number.isFinite(raw)) { reason = "el paso de Newton no es finito"; break; }
+      const xNext = Math.max(xMin, Math.min(xMax, raw));
       clamped = raw !== xNext;
       const err = Math.abs(xNext - x);
       iters.push({ k, xk: x, fx, dfx, xNext, err });
       x = xNext;
-      if (err < tol) { converged = true; break; }
+      if (g(x) === 0 || (err < tol && accepted(x))) { converged = true; break; }
+      if (err === 0) { reason = "el iterado quedó detenido sin alcanzar el valor objetivo"; break; }
     }
-    if (!converged && !reason) reason = "no se alcanzó la tolerancia en 30 iteraciones";
+    if (!converged && !reason) reason = "no se alcanzó la tolerancia y el residuo requerido en 30 iteraciones";
   } else {
     let x0 = br ? br.a : rA, x1 = br ? br.b : rB;
-    if (x0 === x1) x1 = Math.min(xMax, x0 + 1e-3 * (xMax - xMin));
     x = x1;
+    for (const initial of [x0, x1]) if (g(initial) === 0) { x = initial; converged = true; return done(); }
     for (let k = 1; k <= 35; k++) {
       const fx0 = g(x0), fx1 = g(x1), denominator = fx1 - fx0;
-      if (Math.abs(denominator) < 1e-14) { reason = "la recta secante es horizontal y no corta el eje"; break; }
-      const raw = x1 - fx1 * (x1 - x0) / denominator;
+      if (![fx0, fx1, denominator].every(Number.isFinite)) { reason = "la función o la pendiente secante no es finita"; break; }
+      if (denominator === 0) { reason = "la recta secante es horizontal y no corta el eje"; break; }
+      const raw = x1 - fx1 / denominator * (x1 - x0);
+      if (!Number.isFinite(raw)) { reason = "el paso de la secante no es finito"; break; }
       const x2 = Math.max(xMin, Math.min(xMax, raw));
       clamped = raw !== x2;
       const err = Math.abs(x2 - x1);
       iters.push({ k, x0, x1, fx1, x2, err });
       x0 = x1; x1 = x2; x = x2;
-      if (err < tol) { converged = true; break; }
+      if (g(x) === 0 || (err < tol && accepted(x))) { converged = true; break; }
+      if (err === 0) { reason = "la secante quedó detenida sin alcanzar el valor objetivo"; break; }
     }
-    if (!converged && !reason) reason = "no se alcanzó la tolerancia en 35 iteraciones";
+    if (!converged && !reason) reason = "no se alcanzó la tolerancia y el residuo requerido en 35 iteraciones";
   }
-  return { iters, x, converged, reason, clamped };
+  return done();
 }
 function computeComparison(method) {
   if (!lastRunValid) throw new Error("Corrige los parámetros antes de comparar.");
@@ -2564,12 +2644,12 @@ function computeComparison(method) {
     const f = P.userF || ((x) => evaluateSpline(x, splines));
     const g = (x) => f(x) - P.yRef;
     const dg = P.userF ? (x) => { const h = 1e-6 * Math.max(1, Math.abs(x)); return (f(x + h) - f(x - h)) / (2 * h); } : (x) => evaluateSplineDerivative(x, splines);
-    const crossings = findBrackets(g, P.rA, P.rB, 400);
-    const br = g(P.rA) * g(P.rB) <= 0 ? { a: P.rA, b: P.rB } : crossings[0] || null;
+    const crossings = findBrackets(g, P.rA, P.rB, 400, { tol: P.tol, yRef: P.yRef });
+    const br = validRootBracket(g, P.rA, P.rB, P.tol, P.yRef) ? { a: P.rA, b: P.rB } : crossings[0] || null;
     const result = iterateRoot(method, { g, dg, br, ...P, xMin: xData[0], xMax: xData.at(-1) });
-    const maxDg = Math.max(1e-12, ...Array.from({ length: 141 }, (_, i) => Math.abs(dg(xData[0] + i / 140 * (xData.at(-1) - xData[0])))));
     residual = Math.abs(g(result.x));
-    if (!result.converged || !Number.isFinite(residual) || residual > 10 * P.tol * maxDg + 1e-9) throw new Error(METHOD_NAMES[method] + " no convergió con estos parámetros.");
+    if (!result.converged || !rootResidualCheck(g, P.rA, P.rB, P.tol, P.yRef)(result.x))
+      return { method, label: METHOD_NAMES[method], value: null, points: [], exact: null, error: null, iterations: result.iters.length, residual: Number.isFinite(residual) ? residual : null, reason: result.reason || "No se alcanzó un residuo válido." };
     value = result.x; iterations = result.iters.length;
   }
   if (!Number.isFinite(value)) throw new Error("El cálculo no produjo un valor finito.");
@@ -2579,10 +2659,11 @@ function captureExperiment() {
   if (!lastRunValid) throw new Error("Calcula con parámetros válidos antes de guardar.");
   return { version: 1, method: currentMethod, params: Object.fromEntries(PARAM_IDS.map((id) => [id, $(id).value])),
     xs: [...xData], ys: [...yData], xLabel: colXName, yLabel: colYName, source: $("sourceName").textContent,
-    demo: currentAnalytic ? $("demoSelect").value : null };
+    demo: currentAnalytic ? currentDemoKey : null };
 }
 function restoreExperiment(snapshot) {
   if (!snapshot || snapshot.version !== 1 || !Object.hasOwn(METHOD_NAMES, snapshot.method) || !Array.isArray(snapshot.xs) || !Array.isArray(snapshot.ys) || snapshot.xs.length < 2 || snapshot.xs.length > 20000 || snapshot.xs.length !== snapshot.ys.length || !snapshot.xs.every((x, i) => Number.isFinite(x) && (i === 0 || x - snapshot.xs[i - 1] > 1e-12)) || !snapshot.ys.every(Number.isFinite) || !snapshot.params || !PARAM_IDS.every((id) => typeof snapshot.params[id] === "string" && snapshot.params[id].length <= 1000)) throw new Error("El experimento guardado no tiene un formato válido.");
+  cancelPendingImport();
   clearTimeout(debounceTimer);
   xData = [...snapshot.xs]; yData = [...snapshot.ys];
   colXName = String(snapshot.xLabel || "X").slice(0, 120); colYName = String(snapshot.yLabel || "Y").slice(0, 120);
@@ -2590,11 +2671,12 @@ function restoreExperiment(snapshot) {
   lastRows = [[colXName, colYName], ...xData.map((x, i) => [x, yData[i]])];
   $("hdrMode").value = "yes";
   setupColumnSelectors(lastRows, 2);
-  currentAnalytic = null;
+  currentAnalytic = null; currentDemoKey = null;
   const demo = snapshot.demo && Object.hasOwn(DEMO_SETS, snapshot.demo) ? DEMO_SETS[snapshot.demo] : null;
   if (demo && demo.rows.length - 1 === xData.length && demo.rows.slice(1).every((r, i) => toNum(r[0]) === xData[i] && toNum(r[1]) === yData[i])) {
-    $("demoSelect").value = snapshot.demo; currentAnalytic = demo.analytic;
+    $("demoSelect").value = snapshot.demo; currentAnalytic = demo.analytic; currentDemoKey = snapshot.demo;
   }
+  $("demoObservation").textContent = demo && currentDemoKey ? demo.guide || "" : "";
   PARAM_IDS.forEach((id) => { $(id).value = snapshot.params[id]; });
   $("sourceName").textContent = String(snapshot.source || "Experimento restaurado").slice(0, 180);
   $("dataStatus").textContent = xData.length + " puntos · experimento restaurado";
@@ -2602,12 +2684,32 @@ function restoreExperiment(snapshot) {
   showFileError("");
   runMethod(snapshot.method);
 }
+function practiceReportData() {
+  if (!lastRunValid) throw new Error("Corrige los parámetros antes de generar el informe.");
+  return {
+    method: currentMethod, title: $("methodTitle").textContent,
+    source: $("sourceName").textContent, observation: $("demoObservation").textContent,
+    primary: { ...primaryResult }, summary: $("methodSummary").textContent,
+    params: activeParamIds(currentMethod).map((id) => {
+      let value = $(id).value;
+      if (id === "nNodes" && P.nNodes === 0) value = "Todos (" + xData.length + ")";
+      if (id === "rootA" && !value) value = P.rA + " (automático)";
+      if (id === "rootB" && !value) value = P.rB + " (automático)";
+      if (id === "fExpr" && !value) value = "Spline cúbico natural de los datos";
+      return [document.querySelector('label[for="' + id + '"]')?.textContent.trim() || id, value];
+    }),
+    calculations: lastTable ? lastTable.map((row) => [...row]) : [],
+    data: [[colXName, colYName], ...xData.map((x, i) => [x, yData[i]])],
+    chart: chartInstance, convergence: $("convContainer").style.display === "none" ? null : convChartInstance,
+  };
+}
 window.NumericalLab = {
   names: METHOD_NAMES,
   state: () => ({ method: currentMethod, valid: lastRunValid, params: P, xs: [...xData], ys: [...yData], selected: P ? pickNodes(P.xEval) : null, primary: primaryResult, iterations: lastIterations, chart: chartInstance, convergence: convChartInstance }),
   compare: computeComparison,
   capture: captureExperiment,
   restore: restoreExperiment,
+  report: practiceReportData,
   update: (id, value, deferred = false) => {
     if (!PARAM_IDS.includes(id)) return;
     $(id).value = value;
@@ -2617,7 +2719,7 @@ window.NumericalLab = {
   reset: () => {
     const defaults = { evalX: (xData[0] + xData.at(-1)) / 2, nNodes: Math.min(5, xData.length), targetY: (Math.min(...yData) + Math.max(...yData)) / 2, rootTol: 0.0001, rootA: "", rootB: "", fExpr: "" };
     clearTimeout(debounceTimer);
-    PARAM_IDS.forEach((id) => { $(id).value = defaults[id]; });
+    activeParamIds(currentMethod).forEach((id) => { $(id).value = defaults[id]; });
     runMethod(currentMethod);
   },
 };

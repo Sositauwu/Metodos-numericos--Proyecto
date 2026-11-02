@@ -84,3 +84,19 @@ El modo oscuro usa la combinación definitiva de grafito con azul hielo. «Cómo
 - En Bisección, Newton-Raphson o Secante, abre **Ver paso a paso** y usa anterior/siguiente, el deslizador o reproducir/pausar. El resultado destacado mantiene la solución final.
 - En **Experimentos**, guarda hasta cinco sesiones en este navegador, restaura una o elimínala. Se incluyen los datos y parámetros, y el guardado es explícito. Borrar los datos del sitio en el navegador elimina también estas sesiones.
 - Los parámetros inválidos se señalan junto al campo y deben corregirse antes de calcular. **Restablecer parámetros** recupera valores sugeridos para los datos actuales.
+
+
+## Ejemplos didácticos e informe de práctica
+
+En **Cambiar datos → Ejemplos didácticos** puedes cargar:
+
+- **Runge con nodos uniformes:** 21 nodos y un polinomio de grado 20. Las oscilaciones se conservan para observar el comportamiento del método.
+- **Runge con nodos de Chebyshev-Lobatto:** la misma función y el mismo grado, cambiando la distribución de nodos.
+- **Integración en malla irregular:** compara Trapecio y Simpson sobre x³ con su integral exacta.
+- **Ciclo de Newton:** recorre el ciclo entre 0 y 1 y contrástalo con Bisección. Aquí la no convergencia es el resultado esperado.
+
+**Informe de práctica** descarga un HTML autónomo con fuente de datos, parámetros activos, resultados, comparación, gráficas y tablas con precisión numérica. Ábrelo y pulsa **Imprimir / guardar como PDF** para obtener una copia en papel o PDF. No necesita conexión ni servicios externos. Si estabas recorriendo una iteración, el informe identifica ese paso y conserva por separado el resultado final.
+
+Puedes **deshacer la última eliminación** de un experimento. **Restablecer parámetros del método** modifica únicamente los campos que ese método utiliza. La lectura de archivos muestra su estado, conserva el análisis anterior cuando un archivo es inválido y respeta la última selección.
+
+La suite `pnpm test` incluye las 121 comprobaciones numéricas de la auditoría y los casos de regresión de raíces, selección de nodos, ejemplos, guardado e informes.

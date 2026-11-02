@@ -1695,3 +1695,6 @@ input[aria-invalid="true"] { border-color: var(--error-ink); }
 .chart-panel[data-stale="true"] .chart-container { opacity: .35; }
 @media (max-width: 760px) { .secondary-tools { grid-template-columns: 1fr; gap: 8px; } }
 @media print { .secondary-tools, .graph-explorer, .step-panel, .workbench-notice { display: none !important; } }
+.file-read-status, .demo-observation { color: var(--muted); font-size: 12px; line-height: 1.8; padding-bottom: 16px; }
+.file-read-status:empty, .demo-observation:empty { display: none; }
+.demo-observation { max-width: 95ch; }

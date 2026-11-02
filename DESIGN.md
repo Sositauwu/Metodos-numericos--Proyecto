@@ -64,3 +64,18 @@ Los experimentos se guardan solo mediante una acción explícita: hasta cinco re
 La validación se limita a campos activos, conserva las entradas inválidas, añade mensajes vinculados al campo y bloquea el cálculo, guardado y exportación hasta su corrección. La gráfica anterior se identifica como pendiente de actualizar. Los parámetros opcionales de intervalo usan el dominio si están vacíos; no se sustituyen silenciosamente entradas inválidas.
 
 Validación de esta ampliación: 67 comprobaciones automatizadas, incluidas 14 situaciones de interacción con GSAP y geometría real de Chart.js para comparación, selección de puntos y seguimiento de convergencia. La verificación visual en navegador sigue pendiente de acceso autorizado al origen local.
+
+
+## Correcciones verificadas y material de práctica
+
+La confirmación de una raíz requiere evaluaciones finitas y un residuo pequeño respecto a una referencia del intervalo; la pendiente máxima de todo el dominio ya no amplía arbitrariamente el residuo aceptado. El iterado detenido por recorte no se considera éxito. Las raíces exactas iniciales se aceptan antes de dividir por la derivada. Los cambios de signo se validan numéricamente para filtrar polos detectables; esto no constituye una prueba simbólica de continuidad.
+
+Los nodos cercanos se eligen por distancia y después se ordenan por X, con desempate determinista. Una función introducida por el usuario no hereda el residuo analítico de una demo distinta. La explicación de Simpson distingue la malla uniforme de la irregular; con dos puntos, la derivación presenta la pendiente de la recta y O(h).
+
+El selector de datos agrupa los ejemplos didácticos sin añadir paneles permanentes. La nota «Qué observar» corresponde al ejemplo cargado. Runge uniforme mantiene su polinomio de grado 20 y sus oscilaciones; Chebyshev cambia únicamente la distribución de los 21 nodos. El ciclo de Newton mantiene su no convergencia y puede compararse con un método que sí converge.
+
+El informe exportable reúne datos y resultados en HTML autónomo, con impresión/PDF nativos del navegador. Las imágenes se incrustan, los textos se escapan y las tablas conservan la precisión numérica. La captura usa el tema visible y rotula la iteración seleccionada cuando corresponde.
+
+La eliminación de experimentos permite deshacer. El restablecimiento es por método. La importación aplica los datos y la referencia de forma atómica tras validarlos, informa de la lectura y descarta respuestas de selecciones anteriores.
+
+Validación final de esta ampliación: **201 comprobaciones correctas**, incluidas las **121 de la auditoría numérica**, ahora sin fallos, y **13 escenarios nuevos de ejemplos, informes y recuperación**. Detector estático sin hallazgos. La inspección visual en navegador continúa pendiente del permiso del origen local. Esta versión sigue local hasta la aprobación de subida.
