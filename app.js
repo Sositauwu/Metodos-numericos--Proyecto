@@ -1293,7 +1293,63 @@ function runMethod(methodName, btnElement) {
 function chartAnimation() {
   return { duration: 400, easing: "easeOutCubic" };
 }
+function applyChartTheme(config) {
+  const dark = document.documentElement.dataset.theme === "dark";
+  const palette = window.LabTheme?.chartPalette();
+  const text = dark ? palette?.text || "#a7b8cc" : "#52647a";
+  const grid = dark ? palette?.grid || "#304153" : "#e8edf4";
+  const blue = dark ? palette?.curve || "#8bb3ff" : "#285bc5";
+  config.options.color = text;
+  for (const scale of Object.values(config.options.scales || {})) {
+    scale.ticks = { ...scale.ticks, color: text };
+    scale.grid = { ...scale.grid, color: grid };
+    scale.border = { ...scale.border, color: grid };
+    if (scale.title) scale.title.color = text;
+  }
+  const plugins = config.options.plugins || {};
+  if (plugins.legend) {
+    plugins.legend.labels = { ...plugins.legend.labels, color: text };
+  }
+  if (plugins.title) plugins.title.color = text;
+  for (const series of config.data.datasets) {
+    switch (series.id) {
+      case "convergence":
+        series.borderColor = series.backgroundColor = blue;
+        break;
+      case "approximation":
+        series.borderColor = blue;
+        series.backgroundColor = series.fill
+          ? dark ? blue + "20" : "rgba(36,89,189,0.10)"
+          : "transparent";
+        break;
+      case "observations":
+        series.borderColor = series.backgroundColor = dark ? "#ef9690" : "#bd5853";
+        break;
+      case "panels":
+        series.borderColor = dark ? "#648bc4" : "rgba(24,104,219,0.55)";
+        break;
+      case "secondary":
+        series.borderColor = series.backgroundColor = dark ? "#69d5cb" : "#0d9488";
+        break;
+      case "highlight":
+        series.backgroundColor = dark ? palette?.highlight || "#68ddb3" : "#087e5b";
+        series.borderColor = dark ? "#e7edf5" : "#111827";
+        break;
+      default:
+        if (series.id?.startsWith("reference-")) {
+          series.borderColor = series.backgroundColor = dark ? "#e1b57e" : "#a46b32";
+        }
+    }
+  }
+}
+window.addEventListener("lab:themechange", () => {
+  for (const chart of [chartInstance, convChartInstance].filter(Boolean)) {
+    applyChartTheme({ data: chart.data, options: chart.options });
+    chart.update("none");
+  }
+});
 function updatePersistentChart(instance, context, config) {
+  applyChartTheme(config);
   if (!instance) return new Chart(context, config);
   const existing = new Map(
     instance.data.datasets.map((series) => [series.id, series]),
@@ -1559,9 +1615,9 @@ function runMethodCore(methodName) {
         : `κ₁(V) ≈ ${isFinite(cond) ? cond.toExponential(2) : "∞ (matriz singular)"}`;
       let warn = "";
       if (mp.singular || !isFinite(cond))
-        warn = `<div style="margin-top:8px;font-size:0.85rem;color:#b91c1c;">La matriz es numéricamente singular: algunos coeficientes se forzaron a 0 y el polinomio <strong>no es confiable</strong>. Reduce el número de nodos.</div>`;
+        warn = `<div class="numeric-warning">La matriz es numéricamente singular: algunos coeficientes se forzaron a 0 y el polinomio <strong>no es confiable</strong>. Reduce el número de nodos.</div>`;
       else if (cond > 1e10)
-        warn = `<div style="margin-top:8px;font-size:0.85rem;color:#b91c1c;">Sistema muy mal condicionado (κ > 10¹⁰): se pierden más de 10 cifras. Reduce el número de nodos.</div>`;
+        warn = `<div class="numeric-warning">Sistema muy mal condicionado (κ > 10¹⁰): se pierden más de 10 cifras. Reduce el número de nodos.</div>`;
       else if (cond > 1e6)
         warn = `<div class="method-notes">Sistema mal condicionado (κ > 10⁶): el resultado puede perder precisión.</div>`;
       summaryEl.innerHTML =
@@ -1722,7 +1778,7 @@ function runMethodCore(methodName) {
       if (Math.min(...yData) < 0)
         txt += ` <em>Como f toma valores negativos, esto es una integral con signo, no un área geométrica.</em>`;
       if (rich)
-        txt += `<div class="analytic-note" style="background:#eff6ff;border-color:#bfdbfe;color:#1e3a8a;">Estimación de error (Richardson, h vs 2h): E ≈ ${rich.errEst.toExponential(3)} · T<sub>2h</sub> = ${rich.T2h.toFixed(6)} · valor extrapolado = ${rich.improved.toFixed(6)}.</div>`;
+        txt += `<div class="analytic-note info-note">Estimación de error (Richardson, h vs 2h): E ≈ ${rich.errEst.toExponential(3)} · T<sub>2h</sub> = ${rich.T2h.toFixed(6)} · valor extrapolado = ${rich.improved.toFixed(6)}.</div>`;
       if (currentAnalytic) {
         const ex = currentAnalytic.F(xMax) - currentAnalytic.F(xMin);
         txt += analyticNote(
@@ -1801,7 +1857,7 @@ function runMethodCore(methodName) {
         notes.push(
           `Indicador: |I<sub>Simpson</sub> − I<sub>Trapecio</sub>| = ${Math.abs(simp.discreteIntegral - trap.totalArea).toExponential(3)} (el Trapecio es el menos preciso de los dos).`,
         );
-      txt += `<div class="analytic-note" style="background:#eff6ff;border-color:#bfdbfe;color:#1e3a8a;">${notes.join("<br>")}</div>`;
+      txt += `<div class="analytic-note info-note">${notes.join("<br>")}</div>`;
       if (currentAnalytic) {
         const ex = currentAnalytic.F(xMax) - currentAnalytic.F(xMin);
         txt += analyticNote(
@@ -1904,7 +1960,7 @@ function runMethodCore(methodName) {
     };
 
     const failHtml = (reason, xLast) =>
-      `<span style="color:#b91c1c;"><strong>No convergió:</strong> ${reason}</span> <em>Prueba acotar [a, b] alrededor de un cruce visible en la gráfica, o cambia Y<sub>ref</sub>.</em>` +
+      `<span class="numeric-error"><strong>No convergió:</strong> ${reason}</span> <em>Prueba acotar [a, b] alrededor de un cruce visible en la gráfica, o cambia Y<sub>ref</sub>.</em>` +
       (xLast !== undefined
         ? ` Último iterado: x = ${xLast.toFixed(6)}, g(x) = ${g(xLast).toExponential(3)}.`
         : "");

@@ -34,3 +34,17 @@ Movimiento reducido sustituye traslación, escala y hover por opacidad breve. Lo
 ## Estado de revisión
 
 39 pruebas numéricas y de presentación, 4 pruebas DOM de GSAP y 3 pruebas de interpolación con Chart.js real correctas. La revisión estática de Impeccable no arroja hallazgos; el lint de Taste Skill no tiene fallos. Las sombras discretas se conservan porque el usuario las pidió expresamente. La comprobación visual y de transiciones en navegador sigue pendiente mientras el permiso guardado deniegue el acceso al origen local. No se ha subido esta versión a GitHub.
+
+
+## Apariencia clara y oscura
+
+La opción de sol/luna está al pie del lateral, separada de los métodos. A partir de 1050 px aparece junto a «Elegir método» como botón de icono con nombre accesible y objetivo de 44 px. El primer acceso sigue el sistema; una selección explícita se guarda localmente y tiene prioridad. Si el almacenamiento no está disponible, el control sigue funcionando durante la visita. `theme.js` se ejecuta antes de la hoja de estilos para aplicar la preferencia antes del primer pintado.
+
+El modo oscuro usa pizarra `#101923`, superficies `#182431`, tinta `#e7edf5`, texto secundario `#a7b8cc`, azul `#8bb3ff` y esmeralda `#68ddb3`. Los botones principales mantienen verde profundo y texto blanco. Resultados, avisos, errores, fórmulas, tablas y controles comparten roles de color. Chart.js actualiza ejes, leyendas y series sin recalcular datos ni reemplazar las instancias. La impresión conserva la paleta clara. Esta ampliación está disponible localmente y pendiente de aprobación para subirla.
+
+
+### Selector temporal de paletas
+
+Sobre «Datos de entrada» se muestran cuatro opciones de selección única: pizarra + esmeralda, grafito + azul hielo, azul noche + ámbar y carbón + lavanda. Cada opción activa modo oscuro, recolorea las series y guarda la preferencia local. El modo claro conserva su identidad. El selector se retirará cuando el usuario decida la combinación definitiva; no se ha publicado esta ampliación.
+
+Validación de esta ampliación: 39 pruebas numéricas y de presentación, 4 de movimiento, 5 con Chart.js real y 5 de preferencias de tema. Se comprobaron ratios de contraste de texto, controles y botones en las cinco paletas (clara y cuatro oscuras). La revisión visual en navegador sigue pendiente del permiso del origen local.

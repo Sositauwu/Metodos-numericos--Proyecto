@@ -4,8 +4,8 @@
   "private": true,
   "description": "Laboratorio de métodos numéricos FIEE UNMSM",
   "scripts": {
-    "test": "node test.js && node motion.test.js && node chart.test.js",
-    "check": "node --check app.js && node --check motion.js"
+    "test": "node test.js && node motion.test.js && node chart.test.js && node theme.test.js",
+    "check": "node --check app.js && node --check motion.js && node --check theme.js"
   },
   "devDependencies": {
     "jsdom": "^30.1.3"

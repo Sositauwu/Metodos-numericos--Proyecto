@@ -70,3 +70,7 @@ docs/diseno.md   Decisiones y verificación del rediseño
 Astrid Tello Vilchez, Haniel Castellano Guarachi, Jahzeel Sosa Gómez y Jeanpier Chavez Campos.
 
 Facultad de Ingeniería Electrónica y Eléctrica, Universidad Nacional Mayor de San Marcos · 2026.
+
+El botón de sol/luna cambia entre modo claro y oscuro y recuerda la elección en el navegador. En escritorio está al pie de la barra lateral y en móvil junto a «Elegir método».
+
+Durante la revisión, el selector temporal sobre «Datos de entrada» permite comparar cuatro paletas oscuras. Cada opción activa el modo oscuro y se guarda en el navegador.
