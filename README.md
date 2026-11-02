@@ -4,7 +4,7 @@ Laboratorio web para analizar datos X/Y de Excel o CSV y estudiar métodos numé
 
 ## Abrir el laboratorio
 
-Abre `index.html` en un navegador moderno. No necesitas instalar dependencias para utilizarlo; Chart.js, SheetJS y la tipografía se incluyen localmente.
+Abre `index.html` en un navegador moderno. No necesitas instalar dependencias para utilizarlo; Chart.js, SheetJS, GSAP y la tipografía se incluyen localmente.
 
 También puedes servir la carpeta con Python:
 
@@ -37,7 +37,7 @@ Las simulaciones incluyen carga RC, descarga RC, circuito RLC subamortiguado y R
 
 ## Desarrollo y pruebas
 
-Las dependencias son exclusivamente de desarrollo. Usa Node.js compatible con jsdom 30 (`^22.22.2`, `^24.15.0` o `>=26`).
+GSAP es una dependencia de la interfaz y se distribuye también como copia local. jsdom se utiliza solo para las pruebas. Usa Node.js compatible con jsdom 30 (`^22.22.2`, `^24.15.0` o `>=26`).
 
 ```sh
 npm install
@@ -47,7 +47,7 @@ npm test
 
 También puedes usar `pnpm install --frozen-lockfile`, `pnpm check` y `pnpm test`; se incluye `pnpm-lock.yaml`.
 
-Las 25 comprobaciones existentes verifican integración polinómica, equivalencia entre interpoladores, derivación en mallas no uniformes, validación de funciones y convergencia de raíces.
+Las 32 comprobaciones verifican integración polinómica, equivalencia entre interpoladores, derivación en mallas no uniformes, validación de funciones y convergencia de raíces. También comprueban que la cifra protagonista corresponda al cálculo y se limpie cuando no hay raíz. Cuatro pruebas adicionales de movimiento verifican cambios rápidos de estado y preferencias de movimiento reducido.
 
 ## Estructura
 
@@ -55,6 +55,7 @@ Las 25 comprobaciones existentes verifican integración polinómica, equivalenci
 index.html       Interfaz y contenido institucional
 style.css        Sistema visual y adaptación a móvil
 app.js           Métodos numéricos, importación, gráficas y controles
+motion.js        Transiciones GSAP y accesibilidad del movimiento
 libs/            Chart.js y SheetJS locales
 assets/          Escudos, favicon y tipografía con licencia
 test.js         Pruebas numéricas (en la raíz)

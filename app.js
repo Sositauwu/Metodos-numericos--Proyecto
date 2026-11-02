@@ -2,16 +2,65 @@ const $ = (id) => document.getElementById(id);
 
 if (typeof Chart !== "undefined" && Chart.defaults) {
   Chart.defaults.font.family = "Manrope, Segoe UI, sans-serif";
-  Chart.defaults.font.size = 10;
+  Chart.defaults.font.size = 11;
   Chart.defaults.color = "#52647a";
   Chart.defaults.borderColor = "#e8edf4";
   // Recalcular es una acción frecuente: mostrar el dato final inmediatamente.
   Chart.defaults.animation = false;
 }
 
+let primaryResult = null;
+function resultUnit(kind = "value") {
+  const unitOf = (name) => /\(([^)]+)\)/.exec(name)?.[1] || "";
+  const x = unitOf(colXName),
+    y = unitOf(colYName);
+  return kind === "root"
+    ? x
+    : kind === "derivative"
+      ? x && y
+        ? `${y}/${x}`
+        : ""
+      : kind === "integral"
+        ? x && y
+          ? `${y}·${x}`
+          : ""
+        : y;
+}
+function setPrimaryResult(value, label, context = "", kind = "value") {
+  const valid = Number.isFinite(value);
+  const fixed = valid ? value.toFixed(6) : "";
+  const scientific =
+    valid &&
+    kind !== "count" &&
+    (fixed.length > 9 || (value !== 0 && Math.abs(value) < 1e-5));
+  primaryResult = {
+    value: valid ? value : null,
+    label,
+    context,
+    unit: valid && kind !== "count" ? resultUnit(kind) : "",
+  };
+  $("primaryLabel").textContent = label;
+  $("primaryValue").textContent = valid
+    ? kind === "count"
+      ? String(value)
+      : scientific
+        ? value.toExponential(5)
+        : fixed
+    : kind === "root"
+      ? "Sin raíz"
+      : "Sin resultado";
+  $("primaryValue").classList.toggle("scientific", scientific);
+  $("primaryValue").dataset.value = valid ? String(value) : "";
+  $("primaryUnit").textContent = primaryResult.unit;
+  $("primaryContext").textContent = context;
+  $("primarySign").hidden = !valid || kind === "count" || scientific;
+  $("primaryResult").dataset.status = valid ? "success" : "error";
+}
+
 function showFileError(message) {
   $("fileError").textContent = message;
   $("fileError").hidden = !message;
+  if (message) window.LabMotion?.reveal($("fileError"));
 }
 
 let xData = [];
@@ -267,6 +316,10 @@ function processRawRows(rows) {
 
   renderRawDataTable();
   runMethod(currentMethod);
+  window.LabMotion?.reveal(document.querySelector(".data-context"), {
+    distance: 4,
+    duration: 0.3,
+  });
   return true;
 }
 
@@ -993,6 +1046,7 @@ function showParamWarnings(list) {
   if (list.length) {
     box.innerHTML = list.join("<br>");
     box.style.display = "block";
+    window.LabMotion?.reveal(box, { distance: 5, duration: 0.3 });
   } else {
     box.style.display = "none";
     box.innerHTML = "";
@@ -1136,6 +1190,9 @@ function downloadResultsExcel() {
   const resumen = [
     ["Método", $("methodTitle").textContent],
     ["Resultado", $("methodSummary").textContent],
+    ["Resultado principal", primaryResult?.value ?? "Sin resultado"],
+    ["Magnitud", primaryResult?.label ?? ""],
+    ["Unidad", primaryResult?.unit ?? ""],
     ["X de interpolación", parseOr("evalX", "")],
     ["Yref", parseOr("targetY", "")],
     ["Tolerancia |Δx|", parseOr("rootTol", "")],
@@ -1159,14 +1216,14 @@ function scrollToWorkspace() {
   setMenuOpen(false);
   const ws = $("workspace");
   const top = ws.getBoundingClientRect().top;
-  if (window.innerWidth <= 800 || top < 0) {
+  if (window.innerWidth <= 1050 || top < 0) {
     window.scrollTo({
       top: window.scrollY + top - 20,
       // Cambiar de método es navegación frecuente: no animar el desplazamiento.
       behavior: "auto",
     });
   }
-  if (window.innerWidth <= 800) {
+  if (window.innerWidth <= 1050) {
     $("methodTitle").setAttribute("tabindex", "-1");
     $("methodTitle").focus({ preventScroll: true });
   }
@@ -1226,6 +1283,7 @@ function runMethod(methodName, btnElement) {
     }
   }
   if (btnElement) scrollToWorkspace();
+  window.LabMotion?.results();
 }
 
 function setConvergence(errs, label) {
@@ -1241,8 +1299,8 @@ function setConvergence(errs, label) {
         {
           label,
           data: errs.map((e) => Math.max(e, 1e-17)),
-          borderColor: "#2459bd",
-          backgroundColor: "#2459bd",
+          borderColor: "#285bc5",
+          backgroundColor: "#285bc5",
           pointRadius: 3,
           tension: 0,
         },
@@ -1271,6 +1329,11 @@ function setConvergence(errs, label) {
 
 function runMethodCore(methodName) {
   currentMethod = methodName;
+  setPrimaryResult(
+    null,
+    "Resultado del método",
+    "Revisa los parámetros del cálculo.",
+  );
   document.querySelectorAll(".method-btn").forEach((b) => {
     const active = b.dataset.method === methodName;
     b.classList.toggle("active-btn", active);
@@ -1283,12 +1346,18 @@ function runMethodCore(methodName) {
   const roots = ["grafico", "biseccion", "newton_raphson", "secante"].includes(
     methodName,
   );
-  const visibility = { polynomial, interpolation, roots };
+  const visibility = {
+    polynomial,
+    interpolation,
+    evaluation: interpolation || methodName === "derivadas",
+    roots,
+  };
   document.querySelectorAll("[data-params]").forEach((group) => {
     group.hidden = !visibility[group.dataset.params];
   });
-  $("domainNote").hidden = interpolation || roots;
-  $("recalculate").hidden = !interpolation && !roots;
+  $("domainNote").hidden = interpolation || roots || methodName === "derivadas";
+  $("recalculate").hidden =
+    !interpolation && !roots && methodName !== "derivadas";
   $("methodCategory").textContent = interpolation
     ? "Interpolación"
     : roots
@@ -1347,6 +1416,11 @@ function runMethodCore(methodName) {
   const methods = {
     lagrange() {
       const yInterp = evaluateLagrange(xEval, xN, yN);
+      setPrimaryResult(
+        yInterp,
+        "Valor interpolado",
+        `P(${xEval}) · ${colYName}`,
+      );
       const curvePoints = denseN.map((x) => ({
         x,
         y: evaluateLagrange(x, xN, yN),
@@ -1391,6 +1465,11 @@ function runMethodCore(methodName) {
     newton_dd() {
       const F = computeNewtonDividedDiffTable(xN, yN);
       const yInterp = evaluateNewtonPoly(xEval, xN, F);
+      setPrimaryResult(
+        yInterp,
+        "Valor interpolado",
+        `P(${xEval}) · ${colYName}`,
+      );
       const curvePoints = denseN.map((x) => ({
         x,
         y: evaluateNewtonPoly(x, xN, F),
@@ -1443,6 +1522,11 @@ function runMethodCore(methodName) {
     matricial() {
       const mp = computeMatrixPolynomial(xN, yN);
       const yInterp = evaluateMatrixPoly(xEval, mp);
+      setPrimaryResult(
+        yInterp,
+        "Valor interpolado",
+        `P(${xEval}) · ${colYName}`,
+      );
       const curvePoints = denseN.map((x) => ({
         x,
         y: evaluateMatrixPoly(x, mp),
@@ -1493,6 +1577,11 @@ function runMethodCore(methodName) {
 
     splines() {
       const yInterp = evaluateSpline(xEval, splines);
+      setPrimaryResult(
+        yInterp,
+        "Valor interpolado",
+        `S(${xEval}) · ${colYName}`,
+      );
       const curvePoints = denseX.map((x) => ({
         x,
         y: evaluateSpline(x, splines),
@@ -1531,6 +1620,15 @@ function runMethodCore(methodName) {
 
     derivadas() {
       const derivs = computeDerivatives(xData, yData);
+      const nearest = derivs.reduce((best, node) =>
+        Math.abs(node.x - xEval) < Math.abs(best.x - xEval) ? node : best,
+      );
+      setPrimaryResult(
+        nearest.dy,
+        "Derivada calculada",
+        `f′(${nearest.x}) · nodo más cercano a X = ${xEval}`,
+        "derivative",
+      );
       const splinePoints = denseX.map((x) => ({
         x,
         y: evaluateSpline(x, splines),
@@ -1563,7 +1661,7 @@ function runMethodCore(methodName) {
           {
             label: "f'(x) analítica",
             points: exCurve,
-            color: "#f59e0b",
+            color: "#a46b32",
             dash: [2, 3],
             yAxisID: "y2",
           },
@@ -1592,6 +1690,12 @@ function runMethodCore(methodName) {
       const trap = computeTrapezoidalRule(xData, yData);
       const curvePoints = xData.map((x, i) => ({ x, y: yData[i] }));
       const rich = trapezoidRichardson(xData, yData, trap.totalArea);
+      setPrimaryResult(
+        trap.totalArea,
+        "Integral calculada",
+        `Intervalo [${xMin}, ${xMax}] · trapecio compuesto`,
+        "integral",
+      );
 
       titleEl.textContent =
         "Integración Numérica: Regla del Trapecio Compuesta";
@@ -1639,6 +1743,12 @@ function runMethodCore(methodName) {
 
     simpson() {
       const simp = computeSimpson(xData, yData, splines);
+      setPrimaryResult(
+        simp.discreteIntegral,
+        "Integral calculada",
+        `Intervalo [${xMin}, ${xMax}] · Simpson`,
+        "integral",
+      );
       const trap = computeTrapezoidalRule(xData, yData);
       const curvePoints = [];
       simp.rows.forEach((r) => {
@@ -1781,6 +1891,14 @@ function runMethodCore(methodName) {
         : "");
 
     const rootChart = (xr, ok, errs, errLabel) => {
+      setPrimaryResult(
+        ok ? xr : null,
+        ok ? "Raíz encontrada" : "Sin convergencia",
+        ok
+          ? `f(x) = ${yRef} · tolerancia ${tol}`
+          : "Ajusta el intervalo [a, b] o el valor de Yref.",
+        "root",
+      );
       drawChart({
         curveLabel: `Función Objetivo g(x) = f(x) - ${yRef}`,
         curvePoints,
@@ -1810,6 +1928,27 @@ function runMethodCore(methodName) {
 
     if (m === "grafico") {
       const rts = allBr.map(refine);
+      if (rts.length === 1)
+        setPrimaryResult(
+          rts[0],
+          "Raíz estimada",
+          `Cruce gráfico de f(x) = ${yRef}`,
+          "root",
+        );
+      else if (rts.length > 1)
+        setPrimaryResult(
+          rts.length,
+          "Raíces detectadas",
+          rts.map((x) => x.toFixed(6)).join(" · "),
+          "count",
+        );
+      else
+        setPrimaryResult(
+          null,
+          "No se detectó una raíz",
+          "Prueba otro valor de Yref o una función distinta.",
+          "root",
+        );
       let scanRows = [];
       for (let i = 0; i < denseX.length; i += 5) {
         const xv = denseX[i];
@@ -2060,7 +2199,7 @@ function drawChart(options) {
   datasets.push({
     label: options.curveLabel,
     data: options.curvePoints,
-    borderColor: "#2459bd",
+    borderColor: "#285bc5",
     backgroundColor: options.fillArea
       ? "rgba(36, 89, 189, 0.10)"
       : "transparent",
@@ -2092,8 +2231,8 @@ function drawChart(options) {
     datasets.push({
       label: c.label,
       data: c.points,
-      borderColor: c.color || "#f59e0b",
-      backgroundColor: c.color || "#f59e0b",
+      borderColor: c.color || "#a46b32",
+      backgroundColor: c.color || "#a46b32",
       borderDash: c.dash || [],
       borderWidth: 2,
       pointRadius: 0,
@@ -2120,7 +2259,7 @@ function drawChart(options) {
     datasets.push({
       label: hp.label,
       data: hp.points.map((p) => ({ x: p.x, y: p.y })),
-      backgroundColor: "#196b57",
+      backgroundColor: "#087e5b",
       borderColor: "#111827",
       borderWidth: 2,
       pointRadius: 6,
@@ -2175,7 +2314,7 @@ function drawChart(options) {
             boxWidth: 6,
             boxHeight: 6,
             padding: 15,
-            font: { size: 9 },
+            font: { size: 11 },
           },
         },
         tooltip: {
@@ -2223,11 +2362,25 @@ document.addEventListener(
   { capture: true },
 );
 
-function setMenuOpen(open) {
-  document.querySelector(".sidebar").classList.toggle("menu-open", open);
-  $("menuToggle").setAttribute("aria-expanded", String(open));
-  // El cierre visual nunca deja enlaces invisibles en el orden de tabulación.
-  $("methodNav").inert = window.innerWidth <= 800 && !open;
+function setMenuOpen(open, { immediate = false } = {}) {
+  const nav = $("methodNav");
+  const mobile = window.innerWidth <= 1050;
+  document
+    .querySelector(".sidebar")
+    .classList.toggle("menu-open", mobile && open);
+  $("menuToggle").setAttribute("aria-expanded", String(mobile && open));
+  if (!mobile) {
+    window.LabMotion?.clear(nav);
+    nav.hidden = false;
+    nav.inert = false;
+    nav.removeAttribute("aria-hidden");
+    nav.dataset.open = "true";
+  } else if (window.LabMotion)
+    window.LabMotion.disclosure(nav, open, { immediate, menu: true });
+  else {
+    nav.hidden = !open;
+    nav.inert = !open;
+  }
 }
 
 // Controles de presentación. Los métodos numéricos permanecen independientes.
@@ -2244,9 +2397,11 @@ $("sourceToggle").addEventListener("click", (event) => {
   if (event.detail === 0)
     document.documentElement.dataset.inputModality = "keyboard";
   const open = $("sourceToggle").getAttribute("aria-expanded") !== "true";
-  $("sourceControls").hidden = !open;
-  $("sourceControls").inert = !open;
-  $("sourceControls").setAttribute("aria-hidden", String(!open));
+  if (window.LabMotion) window.LabMotion.disclosure($("sourceControls"), open);
+  else {
+    $("sourceControls").hidden = !open;
+    $("sourceControls").inert = !open;
+  }
   $("sourceToggle").setAttribute("aria-expanded", String(open));
   $("sourceToggle").textContent = open ? "Ocultar opciones" : "Cambiar datos";
 });
@@ -2258,8 +2413,10 @@ document.querySelector(".sidebar").addEventListener("focusout", (event) => {
   if (event.relatedTarget && !event.currentTarget.contains(event.relatedTarget))
     setMenuOpen(false);
 });
-window.addEventListener("resize", () => setMenuOpen(false));
-setMenuOpen(false);
+window.addEventListener("resize", () =>
+  setMenuOpen(false, { immediate: true }),
+);
+setMenuOpen(false, { immediate: true });
 $("sourceControls").inert = $("sourceControls").hidden;
 const dropArea = $("fileDrop");
 ["dragenter", "dragover"].forEach((event) =>

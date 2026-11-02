@@ -211,5 +211,53 @@ check(
   1e-5,
 );
 
+// El dato protagonista debe ser el resultado real y nunca conservar un éxito anterior.
+ev(
+  `document.getElementById('fExpr').value = ''; document.getElementById('nNodes').value = '0'; processRawRows([['x','y'],[0,0],[1,1],[2,4]]); document.getElementById('evalX').value = '1.5'; runMethod('lagrange')`,
+);
+check(
+  "Resultado protagonista: Lagrange para x² en 1.5 = 2.25",
+  Number(w.document.getElementById("primaryValue").dataset.value),
+  2.25,
+);
+ev(`runMethod('trapecio')`);
+check(
+  "Resultado protagonista: integral de trapecio = 3",
+  Number(w.document.getElementById("primaryValue").dataset.value),
+  3,
+);
+ev(`runMethod('simpson')`);
+check(
+  "Resultado protagonista: Simpson para x² = 8/3",
+  Number(w.document.getElementById("primaryValue").dataset.value),
+  8 / 3,
+);
+ev(`document.getElementById('evalX').value = '1'; runMethod('derivadas')`);
+check(
+  "Resultado protagonista: derivada de x² en nodo 1 = 2",
+  Number(w.document.getElementById("primaryValue").dataset.value),
+  2,
+);
+ev(
+  `document.getElementById('fExpr').value = 'x^2'; document.getElementById('targetY').value = '2'; runMethod('biseccion')`,
+);
+check(
+  "Resultado protagonista: raíz de x² = 2 es √2",
+  Number(w.document.getElementById("primaryValue").dataset.value),
+  Math.SQRT2,
+  1e-5,
+);
+ev(`document.getElementById('targetY').value = '99'; runMethod('biseccion')`);
+check(
+  "Sin raíz: elimina el número anterior del resultado protagonista",
+  w.document.getElementById("primaryValue").dataset.value === "",
+  true,
+);
+check(
+  "Sin raíz: se muestra un estado de error explícito",
+  w.document.getElementById("primaryResult").dataset.status === "error",
+  true,
+);
+
 console.log(`\n${pass} correctas, ${fail} fallidas`);
 process.exit(fail ? 1 : 0);

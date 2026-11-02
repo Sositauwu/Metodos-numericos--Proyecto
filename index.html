@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#f3f6fa" />
+    <meta name="theme-color" content="#f5f7fa" />
     <meta
       name="description"
       content="Laboratorio de métodos numéricos de la FIEE UNMSM. Analiza datos de Excel o CSV con interpolación, derivación, integración y búsqueda de raíces."
@@ -20,6 +20,8 @@
     <link rel="stylesheet" href="style.css" />
     <script src="libs/xlsx.full.min.js" defer></script>
     <script src="libs/chart.umd.js" defer></script>
+    <script src="libs/gsap.min.js" defer></script>
+    <script src="motion.js" defer></script>
     <script src="app.js" defer></script>
   </head>
   <body>
@@ -29,10 +31,58 @@
         <a
           class="brand"
           href="#analysis"
-          aria-label="Laboratorio de métodos numéricos"
+          aria-label="Métodos numéricos FIEE UNMSM"
         >
-          <span class="brand-mark" aria-hidden="true">∫</span>
-          <span>Laboratorio<br /><strong>numérico</strong></span>
+          <svg
+            class="brand-mark"
+            width="42"
+            height="42"
+            viewBox="0 0 42 42"
+            fill="none"
+            aria-hidden="true"
+          >
+            <path
+              d="M7 31V10M7 31h29"
+              stroke="currentColor"
+              stroke-width="1.6"
+              stroke-linecap="round"
+              opacity=".35"
+            />
+            <path
+              d="M9 28C14 27 15 17 21 17S28 11 34 9"
+              stroke="currentColor"
+              stroke-width="2.3"
+              stroke-linecap="round"
+            />
+            <circle
+              cx="10"
+              cy="27.5"
+              r="3"
+              fill="#07845f"
+              stroke="white"
+              stroke-width="1.5"
+            />
+            <circle
+              cx="21"
+              cy="17"
+              r="3"
+              fill="#07845f"
+              stroke="white"
+              stroke-width="1.5"
+            />
+            <circle
+              cx="34"
+              cy="9"
+              r="3"
+              fill="#07845f"
+              stroke="white"
+              stroke-width="1.5"
+            />
+          </svg>
+          <span class="brand-copy"
+            ><strong>Métodos<br />numéricos</strong
+            ><small>FIEE · UNMSM</small></span
+          >
         </a>
         <button
           class="mobile-menu"
@@ -43,7 +93,12 @@
         >
           Elegir método <span aria-hidden="true">⌄</span>
         </button>
-        <nav id="methodNav" class="method-nav" aria-label="Métodos numéricos">
+        <nav
+          id="methodNav"
+          class="method-nav"
+          aria-label="Métodos numéricos"
+          hidden
+        >
           <div class="nav-group">
             <h2>Interpolación</h2>
             <button
@@ -322,7 +377,7 @@
               </div>
             </div>
             <div class="params-bar" id="parameterPanel">
-              <div class="param-group" data-params="interpolation">
+              <div class="param-group" data-params="evaluation">
                 <label for="evalX">Evaluar en X</label
                 ><input
                   type="number"
@@ -412,37 +467,58 @@
               </button>
             </div>
             <div id="paramWarn" class="warn-box" role="alert"></div>
-            <div class="analysis-surface">
-              <div class="result-banner">
-                <p id="methodSummary" aria-live="polite"></p>
-                <div
-                  id="methodFormula"
-                  class="formula-box"
-                  style="display: none"
-                ></div>
-              </div>
-              <div class="chart-heading">
-                <h3>Visualización del método</h3>
-                <span>Acerca el cursor para explorar los puntos</span>
-              </div>
-              <div class="chart-container">
-                <canvas
-                  id="mainChart"
-                  role="img"
-                  aria-label="Gráfica del método seleccionado"
-                ></canvas>
-              </div>
-              <div class="conv-container" id="convContainer">
-                <canvas
-                  id="convChart"
-                  role="img"
-                  aria-label="Gráfica de convergencia del error por iteración"
-                ></canvas>
-              </div>
-              <details class="how-box" id="howBox">
-                <summary>Cómo funciona este método</summary>
-                <div class="how-text" id="howText"></div>
-              </details>
+            <div class="analysis-grid">
+              <section class="result-card" aria-label="Resultado del cálculo">
+                <div class="primary-result" id="primaryResult">
+                  <p id="primaryLabel">Valor interpolado</p>
+                  <div class="result-number-row">
+                    <span
+                      class="result-sign"
+                      id="primarySign"
+                      aria-hidden="true"
+                      >≈</span
+                    ><output
+                      id="primaryValue"
+                      aria-labelledby="primaryLabel"
+                      aria-describedby="primaryUnit primaryContext"
+                      >—</output
+                    ><span id="primaryUnit" class="result-unit"></span>
+                  </div>
+                  <p id="primaryContext" class="result-context"></p>
+                </div>
+                <div class="result-banner">
+                  <p id="methodSummary"></p>
+                  <div
+                    id="methodFormula"
+                    class="formula-box"
+                    style="display: none"
+                  ></div>
+                </div>
+                <details class="how-box" id="howBox">
+                  <summary>Cómo funciona este método</summary>
+                  <div class="how-text" id="howText"></div>
+                </details>
+              </section>
+              <section class="chart-panel" aria-labelledby="chartHeading">
+                <div class="chart-heading">
+                  <h3 id="chartHeading">Visualización del método</h3>
+                  <span>Explora los puntos con el cursor</span>
+                </div>
+                <div class="chart-container">
+                  <canvas
+                    id="mainChart"
+                    role="img"
+                    aria-label="Gráfica del método seleccionado"
+                  ></canvas>
+                </div>
+                <div class="conv-container" id="convContainer">
+                  <canvas
+                    id="convChart"
+                    role="img"
+                    aria-label="Gráfica de convergencia del error por iteración"
+                  ></canvas>
+                </div>
+              </section>
             </div>
             <section
               class="table-card"

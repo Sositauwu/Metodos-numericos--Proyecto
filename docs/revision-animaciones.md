@@ -1,26 +1,21 @@
-# Revisión de animaciones
+# Revisión de movimiento y resultado
 
-Guía aplicada: [review-animations](https://github.com/nexu-io/open-design/blob/main/skills/review-animations/SKILL.md), junto a su catálogo `STANDARDS.md` y las guías complementarias de movimiento y accesibilidad. El alcance se limita a movimiento e interacción asociada.
+Esta propuesta sustituye la revisión inicial de animaciones de esta rama. El encargo posterior pide explícitamente GSAP, transiciones de 0,4 s y elevación al pasar el cursor. Ese encargo prevalece sobre el criterio anterior de eliminar todas las animaciones frecuentes.
 
-| Antes | Después | Motivo |
-| --- | --- | --- |
-| La gráfica se reconstruía con una animación de 180 ms en cada recálculo. | Resultado y gráfica inmediatos ([app.js](../app.js#L9)). | Introducir valores y comparar métodos son acciones frecuentes; el movimiento no añade información. |
-| Desplazamiento suave también al activar métodos con teclado. | Reposicionamiento inmediato y foco conservado en móvil ([app.js](../app.js#L1157)). | La navegación no debe esperar una animación, especialmente con teclado. |
-| El menú móvil expandía la cabecera y desplazaba el análisis. | Panel anclado al botón, sin modificar la posición del contenido ([style.css](../style.css#L1282)). | Conservar la orientación espacial mientras se elige un método. |
-| Los controles aparecían de golpe. | Apertura de 180 ms y cierre de 100 ms mediante opacidad y `transform`, con curva `cubic-bezier(0.23, 1, 0.32, 1)` ([style.css](../style.css#L1250)). | Confirmar la expansión sin interpolar altura, anchura, márgenes ni posiciones de la página. |
-| Transiciones generales de color también en acciones de teclado y estados hover sin filtro de dispositivo. | Estados frecuentes inmediatos y hover limitado a puntero fino. | Evitar retrasos repetitivos y estados hover falsos en pantallas táctiles. |
-| Movimiento reducido eliminaba toda señal de transición. | Opacidad de 120 ms sin desplazamiento ni escala ([style.css](../style.css#L1323)). | Una señal suave conserva la relación entre estados sin movimiento espacial. |
+| Antes                                                                    | Propuesta actual                                                                                      | Motivo                                                                      |
+| ------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| Resultado dentro de un párrafo de explicación.                           | Cifra protagonista que procede directamente de las variables calculadas; contexto y unidad separados. | Identificar el valor clave de inmediato, sin perder el desarrollo numérico. |
+| Controles de datos y menú con transiciones CSS cortas.                   | GSAP `power2.out`, apertura de 0,4 s y cierre de 0,2 s; los cambios rápidos retoman el estado actual. | Aplicar la fluidez solicitada conservando foco y estado accesible.          |
+| Gráfica reconstruida inmediatamente sin transición del área de análisis. | Los valores finales se dibujan de inmediato y GSAP anima la entrada del resultado y de su gráfica.    | La transición confirma el cambio; nunca simula cifras intermedias.          |
+| Estados hover estáticos.                                                 | Elevación de 2 px con sombra suave en botones y navegación con puntero fino.                          | Aportar la respuesta física solicitada sin activar falsos hover en móvil.   |
+| Movimiento reducido únicamente en CSS.                                   | GSAP adapta traslación y escala a una transición de opacidad de 0,14 s; se desactiva la elevación.    | Respetar la preferencia del sistema sin perder confirmación de estado.      |
 
-**Veredicto: Approve / aprobado para revisión del usuario.** Se eliminaron animaciones frecuentes, las transiciones restantes son breves e interrumpibles y los paneles mantienen su estado accesible al cerrarse. No hay efectos de entrada ambientales ni nuevas dependencias.
+## Verificación de código
 
-## Comprobación
+- 32 comprobaciones numéricas y de presentación correctas.
+- 4 comprobaciones DOM con GSAP real: cierre/reapertura interrumpida, estado accesible del panel, cambio de preferencia durante cierre de detalles y reapertura rápida de la teoría.
+- Revisión de fuente de layout e interrupciones con el agente indicado por el flujo de Impeccable.
+- Detector estático de Impeccable: sin hallazgos.
+- Lint de Taste Skill: sin fallos; las sombras de reposo se conservan porque el usuario las solicitó expresamente.
 
-- Las 25 pruebas numéricas siguen pasando.
-- Navegación móvil a 320 y 390 CSS px, cierre con Escape, retorno del foco, selección de método y paso a escritorio.
-- Al abrir el menú a 320 px, la posición superior del contenido se mantiene en 126 px antes y después; la página no se desplaza horizontalmente.
-- Seis cambios rápidos de apertura/cierre terminan en un estado consistente: `hidden`, `aria-hidden`, `inert` y `aria-expanded` coinciden.
-- Activación con teclado: `transition: none`; menú cerrado fuera del orden de tabulación.
-- El navegador de revisión declara `prefers-reduced-motion: reduce`. Se comprobó la variante de opacidad de 120 ms, sin transformaciones. Los valores de la variante normal se revisaron en el código; no se cambió la preferencia del sistema.
-- Sin errores ni avisos de consola en los flujos revisados.
-
-Esta versión se prepara localmente. La actualización de GitHub requiere la confirmación explícita del usuario después de ver la vista previa.
+**Veredicto actual: pendiente de verificación visual.** El navegador ha denegado el origen local mediante un permiso guardado. No se considera completada la comprobación de vista, movimiento real ni tamaños de pantalla de esta propuesta hasta que se restablezca ese acceso o el usuario haga su revisión manual. Esta versión no se ha subido al repositorio remoto.
