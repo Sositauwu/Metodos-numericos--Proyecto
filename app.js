@@ -1290,15 +1290,8 @@ function runMethod(methodName, btnElement) {
 
 // Conservar el lienzo y cada serie permite interpolar desde su posición visible.
 // easeOutCubic equivale a power2.out en GSAP (400 ms).
-const chartMotionPreference = window.matchMedia?.(
-  "(prefers-reduced-motion: reduce)",
-);
-let chartMotionChosen = false;
-$("animateChart").checked = !chartMotionPreference?.matches;
 function chartAnimation() {
-  return $("animateChart").checked
-    ? { duration: 400, easing: "easeOutCubic" }
-    : false;
+  return { duration: 400, easing: "easeOutCubic" };
 }
 function updatePersistentChart(instance, context, config) {
   if (!instance) return new Chart(context, config);
@@ -1311,26 +1304,9 @@ function updatePersistentChart(instance, context, config) {
   });
   if (config.data.labels) instance.data.labels = config.data.labels;
   instance.options = config.options;
-  instance.update(config.options.animation === false ? "none" : undefined);
+  instance.update();
   return instance;
 }
-function applyChartMotion() {
-  [chartInstance, convChartInstance].filter(Boolean).forEach((chart) => {
-    chart.stop();
-    chart.options.animation = chartAnimation();
-    chart.update("none");
-  });
-}
-$("animateChart").addEventListener("change", () => {
-  chartMotionChosen = true;
-  applyChartMotion();
-});
-chartMotionPreference?.addEventListener("change", (event) => {
-  if (!chartMotionChosen) {
-    $("animateChart").checked = !event.matches;
-    applyChartMotion();
-  }
-});
 
 function setConvergence(errs, label) {
   const cont = $("convContainer");

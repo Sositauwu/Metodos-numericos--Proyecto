@@ -13,7 +13,7 @@ Esta propuesta sustituye la revisión inicial de animaciones de esta rama. El en
 ## Verificación de código
 
 - 39 comprobaciones numéricas y de presentación correctas, incluida conservación de la instancia, de las series y del punto al cambiar nodos.
-- 3 comprobaciones con Chart.js real en una prueba DOM: coordenadas intermedias, llegada al destino y desactivación de la transición.
+- 3 comprobaciones con Chart.js real en una prueba DOM: coordenadas intermedias, llegada al destino y transición permanente en recálculos sucesivos.
 - 4 comprobaciones DOM con GSAP real: cierre/reapertura interrumpida, estado accesible del panel, cambio de preferencia durante cierre de detalles y reapertura rápida de la teoría.
 - Revisión de fuente de layout e interrupciones con el agente indicado por el flujo de Impeccable.
 - Detector estático de Impeccable: sin hallazgos.

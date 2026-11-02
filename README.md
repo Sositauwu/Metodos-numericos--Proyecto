@@ -20,7 +20,7 @@ Visita `http://localhost:4173`.
 2. Pulsa **Cambiar datos** para subir o arrastrar un `.xlsx`, `.xls` o `.csv`, o cargar otra simulación. Puedes elegir el modo de encabezado y, si hay más de dos columnas, las columnas X/Y.
 3. Elige un método en la navegación. En móvil, abre **Elegir método**.
 4. Ajusta los parámetros disponibles. El cálculo se actualiza al editarlos; **Recalcular** lo ejecuta inmediatamente.
-5. Activa **Transición suave** en la gráfica para ver puntos y curvas desplazarse entre cálculos. Esta opción parte de la preferencia de movimiento reducido del navegador.
+5. Los puntos y las curvas se desplazan suavemente entre cálculos de forma automática y permanente, sin necesidad de activar ninguna opción.
 6. Consulta la gráfica, los cálculos, **Cómo funciona este método** y **Datos originales**. Exporta el resultado a Excel o guarda la gráfica en PNG.
 
 Los archivos CSV pueden usar coma, punto y coma o tabulación como separador. Se ordenan los datos por X y se informa de filas no numéricas y valores X repetidos.

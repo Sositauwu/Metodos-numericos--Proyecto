@@ -117,16 +117,17 @@ const { JSDOM } = require("jsdom");
   await wait(400);
   assert(Math.abs(point.x - target) < 0.001);
   console.log("OK   La transición alcanza exactamente la nueva posición");
-  w.document.getElementById("animateChart").checked = false;
-  w.document
-    .getElementById("animateChart")
-    .dispatchEvent(new w.Event("change"));
+  const previous = point.x;
   w.document.getElementById("evalX").value = "0.5";
   w.runMethod("lagrange");
-  assert.equal(chart.options.animation, false);
-  assert.equal(point.x, point.getProps(["x"], true).x);
+  assert.equal(chart.options.animation.duration, 400);
+  const nextTarget = point.getProps(["x"], true).x;
+  await wait(120);
+  assert(point.x > Math.min(previous, nextTarget) && point.x < Math.max(previous, nextTarget));
+  await wait(400);
+  assert(Math.abs(point.x - nextTarget) < 0.001);
   console.log(
-    "OK   Desactivar la transición detiene el movimiento y aplica el valor final",
+    "OK   Los siguientes recálculos mantienen la transición suave automáticamente",
   );
   charts.forEach((c) => c.destroy());
   w.close();

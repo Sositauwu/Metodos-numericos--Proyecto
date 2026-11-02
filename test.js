@@ -312,18 +312,15 @@ check(
   mainGraph() === graphBefore && !mainGraph().options.scales.y2,
   true,
 );
-ev(
-  `document.getElementById('animateChart').checked = false; document.getElementById('animateChart').dispatchEvent(new Event('change')); runMethod('lagrange')`,
-);
+ev(`runMethod('lagrange')`);
 check(
-  "Desactivar transiciones aplica el dato final sin animación",
-  mainGraph().options.animation === false &&
-    mainGraph().updates.at(-1) === "none",
+  "La transición permanece activa en cada recálculo sin casilla",
+  !w.document.getElementById("animateChart") &&
+    mainGraph().options.animation.duration === 400 &&
+    mainGraph().updates.at(-1) !== "none",
   true,
 );
-ev(
-  `document.getElementById('animateChart').checked = true; document.getElementById('animateChart').dispatchEvent(new Event('change')); runMethod('biseccion')`,
-);
+ev(`runMethod('biseccion')`);
 const convergenceBefore = w.__charts.find((c) => c.type === "line");
 ev(`document.getElementById('targetY').value = '2.5'; runMethod('biseccion')`);
 check(
