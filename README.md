@@ -67,10 +67,20 @@ docs/diseno.md   Decisiones y verificación del rediseño
 
 **Curso:** Métodos Numéricos. **Docente:** Josué Miranda.
 
-Astrid Tello Vilchez, Haniel Castellano Guarachi, Jahzeel Sosa Gómez y Jeanpier Chavez Campos.
+Haniel Castellano Guarachi, Jahzeel Sosa Gómez y Jeanpier Chavez Campos.
 
 Facultad de Ingeniería Electrónica y Eléctrica, Universidad Nacional Mayor de San Marcos · 2026.
 
 El botón de sol/luna cambia entre modo claro y oscuro y recuerda la elección en el navegador. En escritorio está al pie de la barra lateral y en móvil junto a «Elegir método».
 
 El modo oscuro usa la combinación definitiva de grafito con azul hielo. «Cómo funciona este método» presenta primero una explicación sencilla y conserva debajo el detalle matemático.
+
+
+## Herramientas interactivas
+
+- Abre **Explorar gráfica**, mueve el deslizador o pulsa sobre el área de trazado para elegir X. La entrada numérica sigue disponible para valores exactos.
+- En los métodos polinómicos, ajusta **Nodos cercanos** con el deslizador o selecciona **Usar todos**. La gráfica destaca los nodos elegidos.
+- Abre **Comparar métodos** para contrastar dos métodos compatibles con los mismos datos y parámetros. La diferencia entre sus resultados no equivale al error real.
+- En Bisección, Newton-Raphson o Secante, abre **Ver paso a paso** y usa anterior/siguiente, el deslizador o reproducir/pausar. El resultado destacado mantiene la solución final.
+- En **Experimentos**, guarda hasta cinco sesiones en este navegador, restaura una o elimínala. Se incluyen los datos y parámetros, y el guardado es explícito. Borrar los datos del sitio en el navegador elimina también estas sesiones.
+- Los parámetros inválidos se señalan junto al campo y deben corregirse antes de calcular. **Restablecer parámetros** recupera valores sugeridos para los datos actuales.

@@ -24,6 +24,7 @@
     <script src="libs/gsap.min.js" defer></script>
     <script src="motion.js" defer></script>
     <script src="app.js" defer></script>
+    <script src="workbench.js" defer></script>
   </head>
   <body>
     <a class="skip-link" href="#analysis">Saltar al análisis</a>
@@ -271,7 +272,7 @@
                 Cambiar datos
               </button>
             </div>
-            <div id="sourceControls" class="source-controls" hidden hidden>
+            <div id="sourceControls" class="source-controls" hidden>
               <div class="upload-column">
                 <label
                   class="file-drop-area"
@@ -404,6 +405,13 @@
                   value="5"
                   aria-describedby="nodesHint"
                 /><small id="nodesHint">0 = todos los nodos</small>
+                <details class="node-adjustment">
+                  <summary>Ajustar con deslizador</summary>
+                  <div>
+                    <input class="range-control" id="nodeSlider" type="range" min="2" max="5" value="5" step="1" aria-label="Cantidad de nodos cercanos" />
+                    <label class="check-control"><input id="allNodes" type="checkbox" /> Usar todos</label>
+                  </div>
+                </details>
               </div>
               <div class="param-group" data-params="roots">
                 <label for="targetY">Valor de Y<sub>ref</sub></label
@@ -473,6 +481,35 @@
               </button>
             </div>
             <div id="paramWarn" class="warn-box" role="alert"></div>
+
+            <div class="secondary-tools">
+              <details class="tool-panel" id="comparePanel">
+                <summary>Comparar métodos</summary>
+                <div class="tool-content">
+                  <label for="compareMethod">Comparar el método actual con</label>
+                  <select id="compareMethod"></select>
+                  <p id="comparisonHint" class="tool-note"></p>
+                  <div id="comparisonResult"></div>
+                </div>
+              </details>
+              <details class="tool-panel" id="experimentPanel">
+                <summary>Experimentos</summary>
+                <div class="tool-content">
+                  <p class="tool-note">Guarda hasta cinco experimentos en este navegador, incluidos sus datos y parámetros.</p>
+                  <label for="experimentName">Nombre del experimento</label>
+                  <input id="experimentName" type="text" maxlength="60" placeholder="Ej. Carga RC · primer ensayo" autocomplete="off" />
+                  <button class="secondary-button" id="saveExperiment" type="button">Guardar experimento</button>
+                  <label for="experimentList">Experimentos guardados</label>
+                  <select id="experimentList"></select>
+                  <div class="tool-actions">
+                    <button class="secondary-button" id="restoreExperiment" type="button">Restaurar</button>
+                    <button class="text-button" id="deleteExperiment" type="button">Eliminar guardado</button>
+                  </div>
+                  <button class="text-button" id="resetParameters" type="button">Restablecer parámetros del método</button>
+                </div>
+              </details>
+            </div>
+            <p class="workbench-notice" id="workbenchNotice" role="status"></p>
             <div class="analysis-grid">
               <section class="result-card" aria-label="Resultado del cálculo">
                 <div class="primary-result" id="primaryResult">
@@ -509,6 +546,15 @@
                 <div class="chart-heading">
                   <h3 id="chartHeading">Visualización del método</h3>
                 </div>
+                <p class="chart-stale-note">Corrige los parámetros para actualizar esta gráfica.</p>
+                <details class="graph-explorer" id="explorePanel">
+                  <summary>Explorar gráfica</summary>
+                  <div class="tool-content">
+                    <label for="exploreX">Posición X <output id="exploreXValue" for="exploreX"></output></label>
+                    <input id="exploreX" class="range-control" type="range" min="0" max="1" step="any" />
+                    <p class="tool-note" id="exploreHint">Desliza o haz clic en la gráfica para elegir X. También puedes escribir el valor exacto en «Evaluar en X».</p>
+                  </div>
+                </details>
                 <div class="chart-container">
                   <canvas
                     id="mainChart"
@@ -523,6 +569,21 @@
                     aria-label="Gráfica de convergencia del error por iteración"
                   ></canvas>
                 </div>
+                <details class="step-panel" id="stepPanel" hidden>
+                  <summary>Ver paso a paso</summary>
+                  <div class="tool-content">
+                    <p class="tool-note">Recorre las iteraciones de este cálculo. El resultado principal conserva el valor final.</p>
+                    <label for="iterationSlider">Iteración <output id="iterationPosition" for="iterationSlider"></output></label>
+                    <input id="iterationSlider" class="range-control" type="range" min="1" max="1" value="1" step="1" />
+                    <div class="tool-actions">
+                      <button id="previousIteration" class="secondary-button" type="button">Anterior</button>
+                      <button id="playIterations" class="secondary-button" type="button">Reproducir</button>
+                      <button id="nextIteration" class="secondary-button" type="button">Siguiente</button>
+                    </div>
+                    <p id="iterationDescription" class="iteration-description"></p>
+                    <button id="showFinalResult" class="text-button" type="button">Volver a la gráfica final</button>
+                  </div>
+                </details>
               </section>
             </div>
             <section
@@ -563,7 +624,6 @@
             <div class="project-credits">
               <p><strong>Docente:</strong> Josué Miranda</p>
               <ul class="members">
-                <li>Astrid Tello Vilchez</li>
                 <li>Haniel Castellano Guarachi</li>
                 <li>Jahzeel Sosa Gómez</li>
                 <li>Jeanpier Chavez Campos</li>

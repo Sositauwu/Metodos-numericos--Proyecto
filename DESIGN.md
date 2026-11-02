@@ -49,3 +49,18 @@ El selector temporal se retiró tras la elección del usuario. Las preferencias 
 «Cómo funciona este método» comienza con una explicación breve en lenguaje sencillo para cada uno de los once métodos. Debajo, «Detalle matemático» conserva la teoría y las fórmulas existentes. El resumen explica la idea, el significado del resultado y las limitaciones más relevantes sin prometer convergencia ni exactitud.
 
 Validación: 39 pruebas numéricas y de presentación, 4 de movimiento, 4 con Chart.js real y 5 de preferencias de tema. Se comprobaron ratios de contraste de texto, controles y botones en las paletas clara y oscura. La revisión visual en navegador sigue pendiente del permiso del origen local.
+
+
+## Laboratorio interactivo
+
+El cálculo principal conserva su jerarquía. Las acciones secundarias «Comparar métodos» y «Experimentos» parten plegadas. La gráfica ofrece «Explorar gráfica», con selección directa de X y deslizador sincronizado con el campo numérico; en derivación se identifica el nodo más cercano. El ajuste de nodos muestra los puntos usados y distingue «Todos» de un número concreto.
+
+«Ver paso a paso» aparece solamente cuando un método iterativo ha registrado pasos. Bisección representa el intervalo; Newton, su tangente; Secante, su recta. El punto, la fila y el error se sincronizan con los registros del algoritmo. El número principal siempre corresponde al resultado final. Reproducir/pausar es explícito y se cancela al cambiar los parámetros, cerrar o abandonar la página visible. Las series conservan su identidad para interpolar sus coordenadas.
+
+La comparación admite dos métodos de la misma familia: interpolación, integración o búsqueda iterativa de raíces. El cálculo secundario utiliza servicios numéricos estructurados y no cambia el método principal ni las tablas exportables. Se distingue la diferencia entre métodos del error respecto a una solución analítica, cuando existe. La comparación de raíces muestra el número de iteraciones y el residuo.
+
+Los experimentos se guardan solo mediante una acción explícita: hasta cinco registros en el almacenamiento local del navegador con datos, nombres de columnas, método, función y parámetros. La restauración valida el formato antes de cambiar los datos. No se guardan contraseñas ni se necesita cuenta. La referencia analítica de una demo solo se restaura cuando los datos coinciden con ella. El usuario puede eliminar cada experimento y restablecer parámetros.
+
+La validación se limita a campos activos, conserva las entradas inválidas, añade mensajes vinculados al campo y bloquea el cálculo, guardado y exportación hasta su corrección. La gráfica anterior se identifica como pendiente de actualizar. Los parámetros opcionales de intervalo usan el dominio si están vacíos; no se sustituyen silenciosamente entradas inválidas.
+
+Validación de esta ampliación: 67 comprobaciones automatizadas, incluidas 14 situaciones de interacción con GSAP y geometría real de Chart.js para comparación, selección de puntos y seguimiento de convergencia. La verificación visual en navegador sigue pendiente de acceso autorizado al origen local.

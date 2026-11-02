@@ -75,6 +75,8 @@ let colIdxX = 0,
 let currentAnalytic = null; // solución analítica del demo activo (null si se cargó un archivo)
 let lastTable = null; // tabla del método (valores crudos, sin redondear) para exportar a Excel
 let P = null; // parámetros validados de la última ejecución
+let lastIterations = [];
+let lastRunValid = false;
 
 // =========================================================================
 // 1. LECTURA DE ARCHIVO EXCEL / CSV
@@ -292,6 +294,7 @@ function processRawRows(rows) {
   yData = uniquePairs.map((p) => p.y);
 
   // Ajustar valores sugeridos de prueba dentro del dominio de los datos
+  if (Number($("nNodes").value) > xData.length) $("nNodes").value = xData.length;
   const xLo = xData[0],
     xHi = xData[xData.length - 1];
   const yLo = Math.min(...yData),
@@ -960,90 +963,72 @@ function parseOr(id, def) {
 }
 
 // Lee y valida los parámetros; los problemas se muestran en pantalla (nada se corrige en silencio)
+const METHOD_NAMES = {
+  lagrange: "Lagrange", newton_dd: "Diferencias de Newton", matricial: "Método matricial",
+  splines: "Splines cúbicos", derivadas: "Diferencias centradas", trapecio: "Regla del trapecio",
+  simpson: "Simpson 1/3 y 3/8", grafico: "Método gráfico", biseccion: "Bisección",
+  newton_raphson: "Newton-Raphson", secante: "Secante",
+};
+const PARAM_IDS = ["evalX", "nNodes", "targetY", "rootTol", "rootA", "rootB", "fExpr"];
 function getParams() {
-  const w = [];
-  const total = xData.length;
-  const xMin = xData[0],
-    xMax = xData[total - 1];
-  const readNum = (id, def, label) => {
-    const raw = $(id).value.trim();
-    const v = parseFloat(raw);
-    if (raw === "" || isNaN(v)) {
-      if (label)
-        w.push(`${label} está vacío o no es un número; se usó ${def}.`);
-      return def;
+  const errors = [];
+  PARAM_IDS.forEach((id) => {
+    $(id).removeAttribute("aria-invalid");
+    const described = ($(id).getAttribute("aria-describedby") || "").split(/\s+/).filter((v) => v && v !== id + "Error");
+    if (described.length) $(id).setAttribute("aria-describedby", described.join(" "));
+    else $(id).removeAttribute("aria-describedby");
+    const hint = $(id + "Error");
+    if (hint) hint.remove();
+  });
+  const reject = (id, message) => {
+    errors.push(message);
+    const input = $(id);
+    input.setAttribute("aria-invalid", "true");
+    let hint = $(id + "Error");
+    if (!hint) {
+      hint = document.createElement("small");
+      hint.id = id + "Error";
+      hint.className = "field-error";
+      input.insertAdjacentElement("afterend", hint);
     }
-    return v;
+    hint.textContent = message;
+    input.setAttribute("aria-describedby", [input.getAttribute("aria-describedby") || "", hint.id].join(" ").trim());
   };
-
-  const xEval = readNum("evalX", 1.0, "X de interpolación");
-  const yRef = readNum("targetY", 0.0, "Y<sub>ref</sub>");
-  let tol = readNum("rootTol", 0.0001, "La tolerancia");
-  if (!(tol > 0)) {
-    w.push("La tolerancia debe ser positiva; se usó 0.0001.");
-    tol = 0.0001;
-  }
-
-  let nNodes = Math.round(readNum("nNodes", 0, null));
-  if (nNodes < 0 || nNodes === 1) {
-    w.push(
-      `n = ${nNodes} no es válido (usa 0 para todos o n ≥ 2); se usan todos los nodos.`,
-    );
-    nNodes = 0;
-  } else if (nNodes > total) {
-    w.push(
-      `n = ${nNodes} es mayor que la cantidad de datos (${total}); se usan todos los nodos.`,
-    );
-    nNodes = 0;
-  } else if (nNodes === total) nNodes = 0;
-
-  let rA = parseOr("rootA", xMin),
-    rB = parseOr("rootB", xMax);
-  if (rA > rB) {
-    [rA, rB] = [rB, rA];
-    w.push("Se intercambiaron a y b porque a > b.");
-  }
-  if (rA < xMin || rB > xMax) {
-    w.push(
-      `El intervalo [a, b] se recortó al dominio de los datos [${xMin}, ${xMax}].`,
-    );
-    rA = Math.max(rA, xMin);
-    rB = Math.min(rB, xMax);
-  }
-  if (!(rA < rB)) {
-    w.push(
-      "El intervalo [a, b] quedó vacío (a = b o fuera del dominio); se usó todo el dominio.",
-    );
-    rA = xMin;
-    rB = xMax;
-  }
-
-  // f(x) opcional para los métodos de raíces
-  const fRaw = $("fExpr").value.trim();
-  const uf = compileUserFunction(fRaw);
-  if (uf.error)
-    w.push(
-      `f(x) no se pudo usar: ${escapeHTML(uf.error)}. Se usa el spline de los datos.`,
-    );
-
-  return {
-    xEval,
-    yRef,
-    tol,
-    nNodes,
-    rA,
-    rB,
-    userF: uf.fn,
-    userFText: uf.fn ? fRaw : "",
-    warnings: w,
+  const read = (id, label, fallback) => {
+    const raw = $(id).value.trim();
+    if (!raw && fallback !== undefined) return fallback;
+    const number = Number(raw);
+    if (!raw || !Number.isFinite(number)) { reject(id, label + ": introduce un número válido."); return NaN; }
+    return number;
   };
+  const root = ["grafico", "biseccion", "newton_raphson", "secante"].includes(currentMethod);
+  const polynomial = ["lagrange", "newton_dd", "matricial"].includes(currentMethod);
+  const evaluation = polynomial || ["splines", "derivadas"].includes(currentMethod);
+  const xEval = evaluation ? read("evalX", "X") : xData[0];
+  const nNodes = polynomial ? read("nNodes", "Nodos", 0) : 0;
+  if (polynomial && Number.isFinite(nNodes) && (!Number.isInteger(nNodes) || nNodes < 0 || nNodes === 1 || nNodes > xData.length))
+    reject("nNodes", "Usa 0 para todos o un entero entre 2 y " + xData.length + ".");
+  const yRef = root ? read("targetY", "Valor objetivo") : 0;
+  const tol = root ? read("rootTol", "Tolerancia") : 0.0001;
+  if (root && Number.isFinite(tol) && tol <= 0) reject("rootTol", "La tolerancia debe ser mayor que cero.");
+  const rA = root ? read("rootA", "Inicio del intervalo", xData[0]) : xData[0];
+  const rB = root ? read("rootB", "Fin del intervalo", xData.at(-1)) : xData.at(-1);
+  if (root && Number.isFinite(rA) && Number.isFinite(rB)) {
+    if (rA >= rB) reject("rootB", "El final del intervalo debe ser mayor que el inicio.");
+    if (rA < xData[0] || rA > xData.at(-1)) reject("rootA", "El inicio debe estar dentro del dominio de los datos.");
+    if (rB < xData[0] || rB > xData.at(-1)) reject("rootB", "El final debe estar dentro del dominio de los datos.");
+  }
+  const userFText = root ? $("fExpr").value.trim() : "";
+  const compiled = root ? compileUserFunction(userFText) : { fn: null };
+  if (compiled.error) reject("fExpr", "Revisa la función: " + compiled.error + ".");
+  return { xEval, yRef, tol, nNodes, rA, rB, userF: compiled.fn, userFText, warnings: errors, valid: !errors.length };
 }
 
 // Muestra los avisos de validación en la caja amarilla (la validación en sí no toca el DOM)
 function showParamWarnings(list) {
   const box = $("paramWarn");
   if (list.length) {
-    box.innerHTML = list.join("<br>");
+    box.innerHTML = list.map(escapeHTML).join("<br>");
     box.style.display = "block";
     window.LabMotion?.reveal(box, { distance: 5, duration: 0.3 });
   } else {
@@ -1053,9 +1038,9 @@ function showParamWarnings(list) {
 }
 
 // Selecciona los n nodos contiguos más cercanos a xEval (n=0 => todos)
-function pickNodes(xEval) {
+function pickNodes(xEval, count = P.nNodes) {
   const total = xData.length;
-  const n = P.nNodes;
+  const n = count;
   if (!(n >= 2) || n >= total) return { xs: xData, ys: yData, all: true };
   let idx = xData.findIndex((x) => x >= xEval);
   if (idx < 0) idx = total - 1;
@@ -1255,8 +1240,10 @@ function runMethod(methodName, btnElement) {
     if (btnElement) scrollToWorkspace();
     return;
   }
-  runMethodCore(methodName);
+  window.LabWorkbench?.beforeRun();
+  const valid = runMethodCore(methodName);
   showTheory(methodName);
+  if (valid === false) { window.LabWorkbench?.onResult(); return; }
   {
     const xEval = P.xEval;
     const xMin = xData[0],
@@ -1301,6 +1288,7 @@ function runMethod(methodName, btnElement) {
   }
   if (btnElement) scrollToWorkspace();
   window.LabMotion?.results();
+  window.LabWorkbench?.onResult();
 }
 
 // Conservar el lienzo y cada serie permite interpolar desde su posición visible.
@@ -1373,6 +1361,9 @@ function updatePersistentChart(instance, context, config) {
     const retained = existing.get(series.id);
     return retained ? Object.assign(retained, series) : series;
   });
+  // Keep optional series alive until the workbench updates them in this same run.
+  // Preserving dataset identity lets comparison and iteration points morph too.
+  instance.data.datasets.push(...[...existing.values()].filter((series) => series.id?.startsWith("tool-")));
   if (config.data.labels) instance.data.labels = config.data.labels;
   instance.options = config.options;
   instance.update();
@@ -1423,6 +1414,8 @@ function setConvergence(errs, label) {
 
 function runMethodCore(methodName) {
   currentMethod = methodName;
+  lastIterations = [];
+  lastRunValid = false;
   setPrimaryResult(
     null,
     "Resultado del método",
@@ -1466,6 +1459,15 @@ function runMethodCore(methodName) {
 
   P = getParams();
   showParamWarnings(P.warnings);
+  document.querySelectorAll(".export-bar button").forEach((button) => { button.disabled = !P.valid; });
+  document.querySelector(".chart-panel").dataset.stale = String(!P.valid);
+  if (!P.valid) {
+    $("methodTitle").textContent = METHOD_NAMES[methodName];
+    $("methodSummary").textContent = "Corrige los campos señalados para calcular con tus parámetros.";
+    $("methodTable").replaceChildren();
+    lastTable = null;
+    return false;
+  }
   const { xEval, yRef, tol, rA, rB } = P;
 
   const splines = buildNaturalCubicSplines(xData, yData);
@@ -2076,26 +2078,7 @@ function runMethodCore(methodName) {
         hideRawY: true,
       });
     } else if (m === "biseccion") {
-      let iters = [],
-        xr = NaN,
-        converged = false;
-      if (br) {
-        let left = br.a,
-          right = br.b;
-        for (let k = 1; k <= 60; k++) {
-          xr = (left + right) / 2;
-          const fxl = g(left),
-            fxr = g(xr);
-          const err = (right - left) / 2; // cota del error absoluto en x
-          iters.push({ k, a: left, b: right, xr, fxr, err });
-          if (err < tol || fxr === 0) {
-            converged = true;
-            break;
-          }
-          if (fxl * fxr <= 0) right = xr;
-          else left = xr;
-        }
-      }
+      const { iters, x: xr, converged } = iterateRoot(m, { g, dg, br, rA, rB, xMin, xMax, tol });
 
       titleEl.textContent = `Método de Bisección (f(x) - ${yRef} = 0)`;
       if (!br) {
@@ -2124,6 +2107,7 @@ function runMethodCore(methodName) {
         iters.map((it) => [it.k, it.a, it.b, it.xr, it.fxr, it.err]),
         [F0, F6, F6, B6, FE, FE],
       );
+      lastIterations = iters.map((it) => ({ ...it, x: it.xr, y: it.fxr }));
       rootChart(
         xr,
         br && converged,
@@ -2131,31 +2115,7 @@ function runMethodCore(methodName) {
         "Error máx. (b−a)/2",
       );
     } else if (m === "newton_raphson") {
-      let xk = br ? (br.a + br.b) / 2 : (rA + rB) / 2; // punto inicial: centro del cambio de signo
-      let iters = [],
-        converged = false,
-        reason = "",
-        clamped = false;
-      for (let k = 1; k <= 30; k++) {
-        const fx = g(xk),
-          dfx = dg(xk);
-        if (Math.abs(dfx) < 1e-12) {
-          reason = `g'(x) ≈ 0 en x = ${xk.toFixed(6)}: el paso de Newton no está definido`;
-          break;
-        }
-        const raw = xk - fx / dfx;
-        const xNext = Math.max(xMin, Math.min(xMax, raw)); // mantener dentro del dominio de los datos
-        clamped = xNext !== raw;
-        const err = Math.abs(xNext - xk);
-        iters.push({ k, xk, fx, dfx, xNext, err });
-        xk = xNext;
-        if (err < tol) {
-          converged = true;
-          break;
-        }
-      }
-      if (!converged && !reason)
-        reason = "no se alcanzó la tolerancia en 30 iteraciones";
+      const { iters, x: xk, converged, reason, clamped } = iterateRoot(m, { g, dg, br, rA, rB, xMin, xMax, tol });
       const v = verifyRoot(xk, converged, reason, clamped);
 
       titleEl.textContent = `Método de Newton-Raphson (f(x) - ${yRef} = 0)`;
@@ -2173,6 +2133,7 @@ function runMethodCore(methodName) {
         iters.map((it) => [it.k, it.xk, it.fx, it.dfx, it.xNext, it.err]),
         [F0, F6, FE, F5, B6, FE],
       );
+      lastIterations = iters.map((it) => ({ ...it, x: it.xNext, y: g(it.xNext) }));
       rootChart(
         xk,
         v.ok,
@@ -2180,36 +2141,7 @@ function runMethodCore(methodName) {
         "Error |Δx|",
       );
     } else if (m === "secante") {
-      let x0 = br ? br.a : rA,
-        x1 = br ? br.b : rB;
-      if (x0 === x1) x1 = Math.min(xMax, x0 + 1e-3 * (xMax - xMin)); // raíz exacta en un nodo: separar los dos puntos iniciales
-      let iters = [],
-        converged = false,
-        reason = "",
-        clamped = false;
-      for (let k = 1; k <= 35; k++) {
-        const fx0 = g(x0),
-          fx1 = g(x1);
-        const denom = fx1 - fx0;
-        if (Math.abs(denom) < 1e-14) {
-          reason =
-            "g(xₖ) ≈ g(xₖ₋₁): la recta secante es horizontal y no corta el eje";
-          break;
-        }
-        const raw = x1 - (fx1 * (x1 - x0)) / denom;
-        const x2 = Math.max(xMin, Math.min(xMax, raw));
-        clamped = x2 !== raw;
-        const err = Math.abs(x2 - x1);
-        iters.push({ k, x0, x1, fx1, x2, err });
-        x0 = x1;
-        x1 = x2;
-        if (err < tol) {
-          converged = true;
-          break;
-        }
-      }
-      if (!converged && !reason)
-        reason = "no se alcanzó la tolerancia en 35 iteraciones";
+      const { iters, x: x1, converged, reason, clamped } = iterateRoot(m, { g, dg, br, rA, rB, xMin, xMax, tol });
       const v = verifyRoot(x1, converged, reason, clamped);
 
       titleEl.textContent = `Método de la Secante (f(x) - ${yRef} = 0)`;
@@ -2227,6 +2159,7 @@ function runMethodCore(methodName) {
         iters.map((it) => [it.k, it.x0, it.x1, it.fx1, it.x2, it.err]),
         [F0, F6, F6, FE, B6, FE],
       );
+      lastIterations = iters.map((it) => ({ ...it, x: it.x2, y: g(it.x2), fx0: g(it.x0) }));
       rootChart(
         x1,
         v.ok,
@@ -2240,6 +2173,7 @@ function runMethodCore(methodName) {
   });
 
   if (methods[methodName]) methods[methodName]();
+  lastRunValid = true;
 }
 
 // =========================================================================
@@ -2369,6 +2303,11 @@ function drawChart(options) {
     data: { datasets },
     options: {
       animation: chartAnimation(),
+      onClick: (event, elements, chart) => {
+        if (!lastRunValid || !["lagrange", "newton_dd", "matricial", "splines", "derivadas"].includes(currentMethod)) return;
+        if (!chart.isPointInArea({ x: event.x, y: event.y })) return;
+        window.LabWorkbench?.selectX(chart.scales.x.getValueForPixel(event.x));
+      },
       responsive: true,
       maintainAspectRatio: false,
       scales: {
@@ -2427,6 +2366,8 @@ function drawChart(options) {
 // Al cambiar un parámetro se vuelve a ejecutar el método activo (con retardo para no recalcular en cada tecla)
 let debounceTimer = null;
 function onParamChange() {
+  lastRunValid = false;
+  window.LabWorkbench?.pending();
   clearTimeout(debounceTimer);
   debounceTimer = setTimeout(() => {
     if ($("workspace").style.display !== "block" || xData.length < 2) return;
@@ -2537,6 +2478,149 @@ document.addEventListener("keydown", (e) => {
     $("menuToggle").focus();
   }
 });
+
+// Structured calculation and session services shared by the interactive workbench.
+function iterateRoot(method, { g, dg, br, rA, rB, xMin, xMax, tol }) {
+  const iters = [];
+  let x = NaN, converged = false, reason = "", clamped = false;
+  if (method === "biseccion") {
+    if (br) {
+      let a = br.a, b = br.b;
+      for (let k = 1; k <= 60; k++) {
+        x = (a + b) / 2;
+        const fxr = g(x), err = (b - a) / 2;
+        iters.push({ k, a, b, xr: x, fxr, err });
+        if (err < tol || fxr === 0) { converged = true; break; }
+        if (g(a) * fxr <= 0) b = x; else a = x;
+      }
+    }
+    if (!converged) reason = br ? "se agotaron las 60 iteraciones" : "no hay un cruce en el intervalo";
+  } else if (method === "newton_raphson") {
+    x = br ? (br.a + br.b) / 2 : (rA + rB) / 2;
+    for (let k = 1; k <= 30; k++) {
+      const fx = g(x), dfx = dg(x);
+      if (Math.abs(dfx) < 1e-12) { reason = "la pendiente es casi nula; el paso de Newton no está definido"; break; }
+      const raw = x - fx / dfx, xNext = Math.max(xMin, Math.min(xMax, raw));
+      clamped = raw !== xNext;
+      const err = Math.abs(xNext - x);
+      iters.push({ k, xk: x, fx, dfx, xNext, err });
+      x = xNext;
+      if (err < tol) { converged = true; break; }
+    }
+    if (!converged && !reason) reason = "no se alcanzó la tolerancia en 30 iteraciones";
+  } else {
+    let x0 = br ? br.a : rA, x1 = br ? br.b : rB;
+    if (x0 === x1) x1 = Math.min(xMax, x0 + 1e-3 * (xMax - xMin));
+    x = x1;
+    for (let k = 1; k <= 35; k++) {
+      const fx0 = g(x0), fx1 = g(x1), denominator = fx1 - fx0;
+      if (Math.abs(denominator) < 1e-14) { reason = "la recta secante es horizontal y no corta el eje"; break; }
+      const raw = x1 - fx1 * (x1 - x0) / denominator;
+      const x2 = Math.max(xMin, Math.min(xMax, raw));
+      clamped = raw !== x2;
+      const err = Math.abs(x2 - x1);
+      iters.push({ k, x0, x1, fx1, x2, err });
+      x0 = x1; x1 = x2; x = x2;
+      if (err < tol) { converged = true; break; }
+    }
+    if (!converged && !reason) reason = "no se alcanzó la tolerancia en 35 iteraciones";
+  }
+  return { iters, x, converged, reason, clamped };
+}
+function computeComparison(method) {
+  if (!lastRunValid) throw new Error("Corrige los parámetros antes de comparar.");
+  const polynomial = ["lagrange", "newton_dd", "matricial"];
+  const interpolation = [...polynomial, "splines"];
+  const roots = ["biseccion", "newton_raphson", "secante"];
+  const compatible = interpolation.includes(currentMethod) ? interpolation : ["trapecio", "simpson"].includes(currentMethod) ? ["trapecio", "simpson"] : roots.includes(currentMethod) ? roots : [];
+  if (!compatible.includes(method)) throw new Error("Elige un método compatible con la magnitud actual.");
+  const splines = buildNaturalCubicSplines(xData, yData);
+  const selected = pickNodes(P.xEval);
+  let value, points = [], exact = null, iterations = null, residual = null;
+  if (interpolation.includes(method)) {
+    let fn;
+    if (method === "lagrange") fn = (x) => evaluateLagrange(x, selected.xs, selected.ys);
+    if (method === "newton_dd") { const table = computeNewtonDividedDiffTable(selected.xs, selected.ys); fn = (x) => evaluateNewtonPoly(x, selected.xs, table); }
+    if (method === "matricial") {
+      const matrix = computeMatrixPolynomial(selected.xs, selected.ys);
+      if (matrix.singular) throw new Error("El sistema matricial es singular; reduce los nodos.");
+      fn = (x) => evaluateMatrixPoly(x, matrix);
+    }
+    if (method === "splines") fn = (x) => evaluateSpline(x, splines);
+    value = fn(P.xEval);
+    points = Array.from({ length: 141 }, (_, i) => {
+      const x = xData[0] + i / 140 * (xData.at(-1) - xData[0]); return { x, y: fn(x) };
+    });
+    if (currentAnalytic) exact = currentAnalytic.f(P.xEval);
+  } else if (["trapecio", "simpson"].includes(method)) {
+    value = method === "trapecio" ? computeTrapezoidalRule(xData, yData).totalArea : computeSimpson(xData, yData, splines).discreteIntegral;
+    if (method === "trapecio") points = xData.map((x, i) => ({ x, y: yData[i] }));
+    else for (const panel of computeSimpson(xData, yData, splines).rows) {
+      const xs = xData.slice(panel.i0, panel.i1 + 1), ys = yData.slice(panel.i0, panel.i1 + 1);
+      for (let i = 0; i <= 20; i++) { const x = xs[0] + i / 20 * (xs.at(-1) - xs[0]); points.push({ x, y: evaluateLagrange(x, xs, ys) }); }
+    }
+    if (currentAnalytic) exact = currentAnalytic.F(xData.at(-1)) - currentAnalytic.F(xData[0]);
+  } else {
+    const f = P.userF || ((x) => evaluateSpline(x, splines));
+    const g = (x) => f(x) - P.yRef;
+    const dg = P.userF ? (x) => { const h = 1e-6 * Math.max(1, Math.abs(x)); return (f(x + h) - f(x - h)) / (2 * h); } : (x) => evaluateSplineDerivative(x, splines);
+    const crossings = findBrackets(g, P.rA, P.rB, 400);
+    const br = g(P.rA) * g(P.rB) <= 0 ? { a: P.rA, b: P.rB } : crossings[0] || null;
+    const result = iterateRoot(method, { g, dg, br, ...P, xMin: xData[0], xMax: xData.at(-1) });
+    const maxDg = Math.max(1e-12, ...Array.from({ length: 141 }, (_, i) => Math.abs(dg(xData[0] + i / 140 * (xData.at(-1) - xData[0])))));
+    residual = Math.abs(g(result.x));
+    if (!result.converged || !Number.isFinite(residual) || residual > 10 * P.tol * maxDg + 1e-9) throw new Error(METHOD_NAMES[method] + " no convergió con estos parámetros.");
+    value = result.x; iterations = result.iters.length;
+  }
+  if (!Number.isFinite(value)) throw new Error("El cálculo no produjo un valor finito.");
+  return { method, label: METHOD_NAMES[method], value, points, exact, error: exact === null ? null : Math.abs(value - exact), iterations, residual };
+}
+function captureExperiment() {
+  if (!lastRunValid) throw new Error("Calcula con parámetros válidos antes de guardar.");
+  return { version: 1, method: currentMethod, params: Object.fromEntries(PARAM_IDS.map((id) => [id, $(id).value])),
+    xs: [...xData], ys: [...yData], xLabel: colXName, yLabel: colYName, source: $("sourceName").textContent,
+    demo: currentAnalytic ? $("demoSelect").value : null };
+}
+function restoreExperiment(snapshot) {
+  if (!snapshot || snapshot.version !== 1 || !Object.hasOwn(METHOD_NAMES, snapshot.method) || !Array.isArray(snapshot.xs) || !Array.isArray(snapshot.ys) || snapshot.xs.length < 2 || snapshot.xs.length > 20000 || snapshot.xs.length !== snapshot.ys.length || !snapshot.xs.every((x, i) => Number.isFinite(x) && (i === 0 || x - snapshot.xs[i - 1] > 1e-12)) || !snapshot.ys.every(Number.isFinite) || !snapshot.params || !PARAM_IDS.every((id) => typeof snapshot.params[id] === "string" && snapshot.params[id].length <= 1000)) throw new Error("El experimento guardado no tiene un formato válido.");
+  clearTimeout(debounceTimer);
+  xData = [...snapshot.xs]; yData = [...snapshot.ys];
+  colXName = String(snapshot.xLabel || "X").slice(0, 120); colYName = String(snapshot.yLabel || "Y").slice(0, 120);
+  colIdxX = 0; colIdxY = 1;
+  lastRows = [[colXName, colYName], ...xData.map((x, i) => [x, yData[i]])];
+  $("hdrMode").value = "yes";
+  setupColumnSelectors(lastRows, 2);
+  currentAnalytic = null;
+  const demo = snapshot.demo && Object.hasOwn(DEMO_SETS, snapshot.demo) ? DEMO_SETS[snapshot.demo] : null;
+  if (demo && demo.rows.length - 1 === xData.length && demo.rows.slice(1).every((r, i) => toNum(r[0]) === xData[i] && toNum(r[1]) === yData[i])) {
+    $("demoSelect").value = snapshot.demo; currentAnalytic = demo.analytic;
+  }
+  PARAM_IDS.forEach((id) => { $(id).value = snapshot.params[id]; });
+  $("sourceName").textContent = String(snapshot.source || "Experimento restaurado").slice(0, 180);
+  $("dataStatus").textContent = xData.length + " puntos · experimento restaurado";
+  renderRawDataTable();
+  showFileError("");
+  runMethod(snapshot.method);
+}
+window.NumericalLab = {
+  names: METHOD_NAMES,
+  state: () => ({ method: currentMethod, valid: lastRunValid, params: P, xs: [...xData], ys: [...yData], selected: P ? pickNodes(P.xEval) : null, primary: primaryResult, iterations: lastIterations, chart: chartInstance, convergence: convChartInstance }),
+  compare: computeComparison,
+  capture: captureExperiment,
+  restore: restoreExperiment,
+  update: (id, value, deferred = false) => {
+    if (!PARAM_IDS.includes(id)) return;
+    $(id).value = value;
+    clearTimeout(debounceTimer);
+    if (deferred) onParamChange(); else runMethod(currentMethod);
+  },
+  reset: () => {
+    const defaults = { evalX: (xData[0] + xData.at(-1)) / 2, nNodes: Math.min(5, xData.length), targetY: (Math.min(...yData) + Math.max(...yData)) / 2, rootTol: 0.0001, rootA: "", rootB: "", fExpr: "" };
+    clearTimeout(debounceTimer);
+    PARAM_IDS.forEach((id) => { $(id).value = defaults[id]; });
+    runMethod(currentMethod);
+  },
+};
 
 // Una simulación identificada ofrece un análisis real desde la primera visita.
 loadDemoCircuitData();

@@ -218,5 +218,12 @@
       resultTimeline?.progress(1);
     }
   });
-  window.LabMotion = { reveal, disclosure, results, clear };
+  function closeDetail(detail) {
+    const content = [...detail.children].find((child) => child.tagName !== "SUMMARY");
+    if (content) { clear(content); content.inert = true; }
+    detail.dataset.open = "false";
+    detail.querySelector("summary")?.setAttribute("aria-expanded", "false");
+    detail.open = false;
+  }
+  window.LabMotion = { reveal, disclosure, results, clear, closeDetail };
 })();

@@ -1641,3 +1641,57 @@ noscript {
 
 .how-text .simple-explanation { color: var(--ink); font-size: 13px; line-height: 1.9; }
 .how-text h4 { margin: 20px 0 10px; padding-top: 16px; border-top: 1px solid var(--line); font-size: 12px; color: var(--muted); }
+
+/* Optional workbench tools share the existing palette and reveal detail on demand. */
+.range-control {
+  display: block;
+  width: 100%;
+  min-height: 32px;
+  padding: 0;
+  margin: 8px 0 0;
+  border: 0;
+  background: transparent;
+  accent-color: var(--accent);
+}
+.param-group .check-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  margin: 0;
+  color: var(--muted);
+  font-weight: 500;
+}
+.check-control input { width: 16px; height: 16px; min-height: 16px; margin: 0; padding: 0; accent-color: var(--accent); }
+.node-adjustment summary { min-height: 32px; padding-top: 5px; font-size: 12px; color: var(--accent); cursor: pointer; }
+.secondary-tools { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 28px; margin-bottom: 18px; }
+.tool-panel { min-width: 0; align-self: start; border-bottom: 1px solid var(--line); }
+.tool-panel > summary,
+.graph-explorer > summary,
+.step-panel > summary { min-height: 44px; align-content: center; cursor: pointer; font-size: 12px; font-weight: 750; color: var(--accent); }
+.tool-content { display: grid; gap: 12px; min-width: 0; padding: 12px 0 20px; }
+.tool-content > label { font-size: 12px; font-weight: 700; }
+.tool-content > input, .tool-content > select { width: 100%; }
+.tool-content > button { justify-self: start; white-space: normal; }
+.tool-note { color: var(--muted); font-size: 12px; line-height: 1.8; }
+.tool-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+.comparison-values { margin: 6px 0 0; font-size: 13px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.comparison-values dt { color: var(--muted); font-size: 12px; }
+.comparison-values dd { margin: 4px 0 16px; color: var(--ink); font-weight: 750; }
+.comparison-values p { font-size: 12px; margin-top: 12px; color: var(--muted); }
+.workbench-notice { font-size: 12px; color: var(--muted); margin: 0 0 18px; overflow-wrap: anywhere; }
+.workbench-notice:empty { display: none; }
+.graph-explorer { margin: 0 24px 8px; border-bottom: 1px solid var(--line); }
+.graph-explorer .tool-content { gap: 6px; }
+.graph-explorer output, .step-panel output { margin-left: 8px; font-variant-numeric: tabular-nums; color: var(--accent); }
+.step-panel { padding: 4px 24px 8px; border-top: 1px solid var(--line); }
+.iteration-description { font-size: 13px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.selected-iteration { background: var(--soft); }
+.selected-iteration td { color: var(--ink); font-weight: 700; }
+.param-group .field-error { color: var(--error-ink); font-size: 12px; }
+input[aria-invalid="true"] { border-color: var(--error-ink); }
+.chart-stale-note { display: none; padding: 0 24px 12px; font-size: 12px; color: var(--error-ink); }
+.chart-panel[data-stale="true"] .chart-stale-note { display: block; }
+.chart-panel[data-stale="true"] .chart-container { opacity: .35; }
+@media (max-width: 760px) { .secondary-tools { grid-template-columns: 1fr; gap: 8px; } }
+@media print { .secondary-tools, .graph-explorer, .step-panel, .workbench-notice { display: none !important; } }
