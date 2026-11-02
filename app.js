@@ -5,11 +5,8 @@ if (typeof Chart !== "undefined" && Chart.defaults) {
   Chart.defaults.font.size = 10;
   Chart.defaults.color = "#52647a";
   Chart.defaults.borderColor = "#e8edf4";
-  Chart.defaults.animation = window.matchMedia?.(
-    "(prefers-reduced-motion: reduce)",
-  ).matches
-    ? false
-    : { duration: 180 };
+  // Recalcular es una acción frecuente: mostrar el dato final inmediatamente.
+  Chart.defaults.animation = false;
 }
 
 function showFileError(message) {
@@ -1158,19 +1155,18 @@ function downloadResultsExcel() {
 }
 
 function scrollToWorkspace() {
+  // Cerrar antes de medir evita calcular la posición con el menú abierto.
+  setMenuOpen(false);
   const ws = $("workspace");
   const top = ws.getBoundingClientRect().top;
   if (window.innerWidth <= 800 || top < 0) {
     window.scrollTo({
       top: window.scrollY + top - 20,
-      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
-        ? "auto"
-        : "smooth",
+      // Cambiar de método es navegación frecuente: no animar el desplazamiento.
+      behavior: "auto",
     });
   }
   if (window.innerWidth <= 800) {
-    document.querySelector(".sidebar").classList.remove("menu-open");
-    $("menuToggle").setAttribute("aria-expanded", "false");
     $("methodTitle").setAttribute("tabindex", "-1");
     $("methodTitle").focus({ preventScroll: true });
   }
@@ -2209,18 +2205,62 @@ function onParamChange() {
   },
 );
 
-// Controles de presentación. Los métodos numéricos permanecen independientes.
-$("menuToggle").addEventListener("click", () => {
-  const open = $("menuToggle").getAttribute("aria-expanded") !== "true";
+// El teclado siempre responde sin animación. El puntero permite movimientos
+// breves únicamente al desplegar controles, nunca durante los cálculos.
+document.documentElement.dataset.inputModality = "pointer";
+document.addEventListener(
+  "keydown",
+  () => {
+    document.documentElement.dataset.inputModality = "keyboard";
+  },
+  { capture: true },
+);
+document.addEventListener(
+  "pointerdown",
+  () => {
+    document.documentElement.dataset.inputModality = "pointer";
+  },
+  { capture: true },
+);
+
+function setMenuOpen(open) {
   document.querySelector(".sidebar").classList.toggle("menu-open", open);
   $("menuToggle").setAttribute("aria-expanded", String(open));
+  // El cierre visual nunca deja enlaces invisibles en el orden de tabulación.
+  $("methodNav").inert = window.innerWidth <= 800 && !open;
+}
+
+// Controles de presentación. Los métodos numéricos permanecen independientes.
+$("menuToggle").addEventListener("click", (event) => {
+  if (event.detail === 0)
+    document.documentElement.dataset.inputModality = "keyboard";
+  const open = $("menuToggle").getAttribute("aria-expanded") !== "true";
+  setMenuOpen(open);
 });
-$("sourceToggle").addEventListener("click", () => {
+document
+  .querySelector(".brand")
+  .addEventListener("click", () => setMenuOpen(false));
+$("sourceToggle").addEventListener("click", (event) => {
+  if (event.detail === 0)
+    document.documentElement.dataset.inputModality = "keyboard";
   const open = $("sourceToggle").getAttribute("aria-expanded") !== "true";
   $("sourceControls").hidden = !open;
+  $("sourceControls").inert = !open;
+  $("sourceControls").setAttribute("aria-hidden", String(!open));
   $("sourceToggle").setAttribute("aria-expanded", String(open));
   $("sourceToggle").textContent = open ? "Ocultar opciones" : "Cambiar datos";
 });
+document.addEventListener("pointerdown", (event) => {
+  if (!document.querySelector(".sidebar").contains(event.target))
+    setMenuOpen(false);
+});
+document.querySelector(".sidebar").addEventListener("focusout", (event) => {
+  if (event.relatedTarget && !event.currentTarget.contains(event.relatedTarget))
+    setMenuOpen(false);
+});
+window.addEventListener("resize", () => setMenuOpen(false));
+setMenuOpen(false);
+$("sourceControls").inert = $("sourceControls").hidden;
 const dropArea = $("fileDrop");
 ["dragenter", "dragover"].forEach((event) =>
   dropArea.addEventListener(event, (e) => {
@@ -2240,8 +2280,7 @@ document.addEventListener("keydown", (e) => {
     e.key === "Escape" &&
     document.querySelector(".sidebar").classList.contains("menu-open")
   ) {
-    document.querySelector(".sidebar").classList.remove("menu-open");
-    $("menuToggle").setAttribute("aria-expanded", "false");
+    setMenuOpen(false);
     $("menuToggle").focus();
   }
 });

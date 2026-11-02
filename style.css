@@ -44,14 +44,6 @@ summary {
   touch-action: manipulation;
   -webkit-tap-highlight-color: rgba(36, 89, 189, 0.12);
 }
-button,
-a,
-summary {
-  transition:
-    color 0.15s,
-    background-color 0.15s,
-    border-color 0.15s;
-}
 button {
   cursor: pointer;
 }
@@ -176,10 +168,13 @@ svg {
   line-height: 1.5;
   position: relative;
 }
-.method-btn:hover {
-  background: #f3f6fa;
-  color: var(--ink);
+@media (hover: hover) and (pointer: fine) {
+  .method-btn:hover {
+    background: #f3f6fa;
+    color: var(--ink);
+  }
 }
+
 .method-btn.active-btn {
   color: var(--accent);
   background: #eaf0fc;
@@ -204,9 +199,12 @@ svg {
   border-top: 1px solid var(--line);
   color: var(--muted);
 }
-.source-link:hover {
-  color: var(--accent);
+@media (hover: hover) and (pointer: fine) {
+  .source-link:hover {
+    color: var(--accent);
+  }
 }
+
 .mobile-menu {
   display: none;
 }
@@ -302,10 +300,13 @@ svg {
   padding: 5px 0;
   text-align: left;
 }
-.text-button:hover {
-  text-decoration: underline;
-  text-underline-offset: 4px;
+@media (hover: hover) and (pointer: fine) {
+  .text-button:hover {
+    text-decoration: underline;
+    text-underline-offset: 4px;
+  }
 }
+
 .source-controls {
   display: grid;
   grid-template-columns: 1.05fr 1fr;
@@ -326,11 +327,17 @@ svg {
   padding: 14px;
   color: var(--accent);
 }
-.file-drop-area:hover,
+@media (hover: hover) and (pointer: fine) {
+  .file-drop-area:hover {
+    background: #edf3ff;
+    border-color: var(--accent);
+  }
+}
 .file-drop-area.drag-over {
   background: #edf3ff;
   border-color: var(--accent);
 }
+
 .file-drop-area:focus-within {
   outline: 3px solid #4c84e6;
   outline-offset: 3px;
@@ -466,10 +473,13 @@ input::placeholder {
   font-weight: 700;
   white-space: nowrap;
 }
-.primary-button:hover {
-  background: var(--accent-hover);
-  border-color: var(--accent-hover);
+@media (hover: hover) and (pointer: fine) {
+  .primary-button:hover {
+    background: var(--accent-hover);
+    border-color: var(--accent-hover);
+  }
 }
+
 .secondary-button {
   background: #fff;
   color: var(--muted);
@@ -484,10 +494,13 @@ input::placeholder {
   gap: 12px;
   align-items: center;
 }
-.secondary-button:hover {
-  border-color: var(--accent);
-  color: var(--accent);
+@media (hover: hover) and (pointer: fine) {
+  .secondary-button:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
 }
+
 button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
@@ -656,10 +669,13 @@ button:disabled {
   min-height: 24px;
   align-content: center;
 }
-.how-box summary:hover,
-.raw-data > summary:hover {
-  color: var(--accent);
+@media (hover: hover) and (pointer: fine) {
+  .how-box summary:hover,
+  .raw-data > summary:hover {
+    color: var(--accent);
+  }
 }
+
 .how-text {
   font-size: 12px;
   line-height: 1.85;
@@ -719,9 +735,12 @@ td:first-child {
 tbody tr:last-child td {
   border: 0;
 }
-tbody tr:hover {
-  background: #f5f8fd;
+@media (hover: hover) and (pointer: fine) {
+  tbody tr:hover {
+    background: #f5f8fd;
+  }
 }
+
 td strong {
   color: var(--accent);
 }
@@ -1156,15 +1175,6 @@ noscript {
     grid-template-columns: 1fr;
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    scroll-behavior: auto !important;
-    transition: none !important;
-    animation: none !important;
-  }
-}
 @media print {
   .sidebar,
   .source-controls,
@@ -1235,4 +1245,103 @@ noscript {
   .primary-button {
     font-size: 11px;
   }
+}
+
+/* Movimiento funcional: valores tomados de review-animations/STANDARDS.md.
+   Apertura 180 ms, cierre 100 ms; nada de altura, anchura o desplazamiento
+   del documento. Navegación, cálculos y estados hover son inmediatos. */
+:root {
+  --motion-ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+}
+.source-controls {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity 180ms var(--motion-ease-out),
+    transform 180ms var(--motion-ease-out),
+    display 180ms allow-discrete;
+}
+.source-controls[hidden] {
+  opacity: 0;
+  transform: translateY(-4px);
+  pointer-events: none;
+  transition-duration: 100ms;
+}
+@starting-style {
+  .source-controls:not([hidden]) {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+.mobile-menu span {
+  display: inline-block;
+}
+.mobile-menu[aria-expanded="true"] span {
+  transform: rotate(180deg);
+}
+@media (max-width: 800px) {
+  .sidebar {
+    position: relative;
+    z-index: 10;
+  }
+  .method-nav {
+    position: absolute;
+    top: calc(100% - 8px);
+    left: 16px;
+    right: 16px;
+    margin: 0;
+    padding: 18px;
+    max-height: min(70dvh, 600px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    box-shadow: 0 12px 28px rgba(23, 44, 69, 0.14);
+    transform-origin: top right;
+    transform: translateY(-4px) scale(0.97);
+    opacity: 0;
+    pointer-events: none;
+    transition:
+      opacity 100ms var(--motion-ease-out),
+      transform 100ms var(--motion-ease-out),
+      display 100ms allow-discrete;
+  }
+  .sidebar.menu-open .method-nav {
+    opacity: 1;
+    transform: none;
+    pointer-events: auto;
+    transition-duration: 180ms;
+  }
+  @starting-style {
+    .sidebar.menu-open .method-nav {
+      opacity: 0;
+      transform: translateY(-4px) scale(0.97);
+    }
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .source-controls,
+  .source-controls[hidden],
+  .method-nav,
+  .sidebar.menu-open .method-nav {
+    transform: none;
+    transition:
+      opacity 120ms var(--motion-ease-out),
+      display 120ms allow-discrete;
+  }
+  @starting-style {
+    .source-controls:not([hidden]),
+    .sidebar.menu-open .method-nav {
+      transform: none;
+    }
+  }
+}
+/* El teclado no espera animaciones, incluso al interrumpir una transición. */
+html[data-input-modality="keyboard"] *,
+html[data-input-modality="keyboard"] *::before,
+html[data-input-modality="keyboard"] *::after {
+  transition: none !important;
+  animation: none !important;
+  scroll-behavior: auto !important;
 }
