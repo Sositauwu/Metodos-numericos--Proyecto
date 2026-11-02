@@ -1101,8 +1101,22 @@ const THEORY = {
     NOTE_SPLINE,
 };
 
+const METHOD_GUIDES = {
+  lagrange: "Construye una sola curva que pasa exactamente por los puntos elegidos. Después lee en esa curva el valor que corresponde a la X que quieres consultar. Con muchos puntos, la curva puede oscilar demasiado entre ellos.",
+  newton_dd: "Parte de un punto y va añadiendo correcciones para que la curva pase por los demás. Con los mismos nodos produce el mismo polinomio que Lagrange, pero lo construye paso a paso usando diferencias divididas.",
+  matricial: "Busca los coeficientes de un polinomio resolviendo un sistema de ecuaciones: cada punto aporta una condición que la curva debe cumplir. Con muchos puntos, el cálculo puede ser sensible al redondeo.",
+  splines: "Une cada par de puntos con una pequeña curva cúbica y suaviza las uniones. Así evita depender de un único polinomio de grado alto y suele reducir las oscilaciones entre los datos.",
+  derivadas: "Estima qué tan rápido cambia Y cuando cambia X, usando tres puntos cercanos. Un resultado positivo indica que la curva sube; uno negativo, que baja. En los extremos usa los puntos disponibles de un solo lado.",
+  trapecio: "Aproxima el área con signo entre la curva y el eje X. Une los puntos con líneas rectas, forma trapecios y suma sus áreas; los tramos bajo el eje restan.",
+  simpson: "Aproxima el área con signo usando pequeñas parábolas en lugar de líneas rectas. Puede dar más precisión que el trapecio cuando la curva es suave. Si sobra un grupo de tres intervalos, lo completa con la regla de Simpson 3/8.",
+  grafico: "Busca dónde la curva alcanza el valor objetivo. Revisa una malla de puntos, detecta los tramos que cruzan ese nivel y estima la posición del cruce. Es una aproximación que puede omitir cruces sin cambio de signo o muy cercanos entre sí.",
+  biseccion: "Busca dónde la curva alcanza el valor objetivo dividiendo un intervalo por la mitad una y otra vez. En cada paso conserva la mitad que encierra el cruce. Es un proceso seguro si la función es continua y los extremos quedan a lados opuestos del objetivo.",
+  newton_raphson: "Parte de una estimación y usa la pendiente de la curva para proponer una mejor. Repite los saltos hasta acercarse al valor objetivo. Puede avanzar muy rápido, pero una pendiente casi nula o un punto inicial poco adecuado puede hacer que falle.",
+  secante: "Usa dos estimaciones y traza una recta entre sus puntos para proponer la siguiente. Repite el proceso hasta acercarse al valor objetivo, sin calcular la derivada. Suele avanzar rápido, aunque no garantiza encontrar la solución.",
+};
+
 function showTheory(methodName) {
-  $("howText").innerHTML = THEORY[methodName] || "";
+  $("howText").innerHTML = `<p class="simple-explanation">${METHOD_GUIDES[methodName] || ""}</p><h4>Detalle matemático</h4><div>${THEORY[methodName] || ""}</div>`;
 }
 
 // Construye la tabla del método a partir de valores crudos (la exportación a Excel usa los valores sin redondear)
@@ -1163,7 +1177,8 @@ function downloadChartPNG() {
   c.width = src.width;
   c.height = src.height;
   const ctx = c.getContext("2d");
-  ctx.fillStyle = "#ffffff"; // fondo blanco (el canvas original es transparente)
+  // El canvas es transparente: conservar el contraste del tema al exportarlo.
+  ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue("--surface").trim() || "#ffffff";
   ctx.fillRect(0, 0, c.width, c.height);
   ctx.drawImage(src, 0, 0);
   const fileName = `grafica_${currentMethod}.png`;
@@ -1296,9 +1311,9 @@ function chartAnimation() {
 function applyChartTheme(config) {
   const dark = document.documentElement.dataset.theme === "dark";
   const palette = window.LabTheme?.chartPalette();
-  const text = dark ? palette?.text || "#a7b8cc" : "#52647a";
-  const grid = dark ? palette?.grid || "#304153" : "#e8edf4";
-  const blue = dark ? palette?.curve || "#8bb3ff" : "#285bc5";
+  const text = dark ? palette?.text || "#b0bac8" : "#52647a";
+  const grid = dark ? palette?.grid || "#3c4450" : "#e8edf4";
+  const blue = dark ? palette?.curve || "#8cc8ff" : "#285bc5";
   config.options.color = text;
   for (const scale of Object.values(config.options.scales || {})) {
     scale.ticks = { ...scale.ticks, color: text };
@@ -1332,7 +1347,7 @@ function applyChartTheme(config) {
         series.borderColor = series.backgroundColor = dark ? "#69d5cb" : "#0d9488";
         break;
       case "highlight":
-        series.backgroundColor = dark ? palette?.highlight || "#68ddb3" : "#087e5b";
+        series.backgroundColor = dark ? palette?.highlight || "#80d9d5" : "#087e5b";
         series.borderColor = dark ? "#e7edf5" : "#111827";
         break;
       default:

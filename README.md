@@ -73,4 +73,4 @@ Facultad de Ingeniería Electrónica y Eléctrica, Universidad Nacional Mayor de
 
 El botón de sol/luna cambia entre modo claro y oscuro y recuerda la elección en el navegador. En escritorio está al pie de la barra lateral y en móvil junto a «Elegir método».
 
-Durante la revisión, el selector temporal sobre «Datos de entrada» permite comparar cuatro paletas oscuras. Cada opción activa el modo oscuro y se guarda en el navegador.
+El modo oscuro usa la combinación definitiva de grafito con azul hielo. «Cómo funciona este método» presenta primero una explicación sencilla y conserva debajo el detalle matemático.

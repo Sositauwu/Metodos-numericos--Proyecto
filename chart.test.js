@@ -134,24 +134,17 @@ const { JSDOM } = require("jsdom");
   const coordinates = JSON.stringify(chart.data.datasets.map((s) => s.data));
   w.document.getElementById("themeToggle").click();
   assert.equal(w.document.documentElement.dataset.theme, "dark");
-  assert.equal(chart.options.scales.x.ticks.color, "#a7b8cc");
-  assert.equal(chart.data.datasets.find((s) => s.id === "approximation").borderColor, "#8bb3ff");
+  assert.equal(chart.options.scales.x.ticks.color, "#b0bac8");
+  assert.equal(chart.data.datasets.find((s) => s.id === "approximation").borderColor, "#8cc8ff");
   assert.equal(JSON.stringify(chart.data.datasets.map((s) => s.data)), coordinates);
   assert.equal(w.document.getElementById("primaryValue").textContent, value);
   w.runMethod("lagrange");
-  assert.equal(chart.data.datasets.find((s) => s.id === "approximation").borderColor, "#8bb3ff");
+  assert.equal(chart.data.datasets.find((s) => s.id === "approximation").borderColor, "#8cc8ff");
   w.document.getElementById("themeToggle").click();
   assert.equal(chart.options.scales.x.ticks.color, "#52647a");
   assert.equal(chart.data.datasets.find((s) => s.id === "approximation").borderColor, "#285bc5");
   assert.equal(chart.options.animation.duration, 400);
   console.log("OK   Cambiar tema adapta Chart.js y conserva cálculos, series y transiciones");
-  for (const [id, expected] of Object.entries({ pizarra: "#8bb3ff", grafito: "#8cc8ff", noche: "#93c5fd", lavanda: "#c4b5fd" })) {
-    w.document.querySelector(`input[value="${id}"]`).click();
-    assert.equal(chart.data.datasets.find((s) => s.id === "approximation").borderColor, expected);
-    assert.equal(w.document.getElementById("primaryValue").textContent, value);
-    assert.equal(chart.options.animation.duration, 400);
-  }
-  console.log("OK   Las cuatro paletas recolorean la gráfica sin alterar el resultado");
   charts.forEach((c) => c.destroy());
   w.close();
 })().catch((error) => {

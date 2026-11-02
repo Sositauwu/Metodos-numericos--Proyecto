@@ -47,22 +47,10 @@ async function fixture({ saved, dark = false, blocked = false, palette } = {}) {
   privateVisit.close();
   console.log("OK   El control funciona aunque el navegador bloquee el almacenamiento");
 
-  const preview = await fixture();
-  for (const id of ["pizarra", "grafito", "noche", "lavanda"]) {
-    const input = preview.w.document.querySelector(`input[value="${id}"]`);
-    input.click();
-    assert.equal(preview.w.document.documentElement.dataset.theme, "dark");
-    assert.equal(preview.w.document.documentElement.dataset.palette, id);
-    assert.equal(preview.w.document.querySelectorAll('input[name="darkPalette"]:checked').length, 1);
-    assert.equal(preview.w.localStorage.getItem("numerical-lab-dark-palette"), id);
-  }
-  preview.w.document.getElementById("themeToggle").click();
-  assert.equal(preview.w.document.querySelectorAll('input[name="darkPalette"]:checked').length, 0);
-  preview.w.document.getElementById("themeToggle").click();
-  assert(preview.w.document.querySelector('input[value="lavanda"]').checked);
-  preview.close();
-  const savedPalette = await fixture({ saved: "dark", palette: "lavanda" });
-  assert.equal(savedPalette.w.document.documentElement.dataset.palette, "lavanda");
-  savedPalette.close();
-  console.log("OK   Las cuatro paletas se seleccionan, se recuerdan y mantienen selección única");
+  const previousPreview = await fixture({ saved: "dark", palette: "lavanda" });
+  assert.equal(previousPreview.w.LabTheme.chartPalette().curve, "#8cc8ff");
+  assert.equal(previousPreview.w.document.querySelectorAll('input[name="darkPalette"]').length, 0);
+  previousPreview.close();
+  console.log("OK   La paleta definitiva reemplaza cualquier selección de la prueba temporal");
+
 })().catch((error) => { console.error(error); process.exitCode = 1; });
