@@ -1494,3 +1494,27 @@ noscript {
   min-width: 0;
   overflow-wrap: anywhere;
 }
+.chart-heading {
+  flex-wrap: wrap;
+  row-gap: 10px;
+}
+.chart-motion-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  font-size: 12px;
+  color: var(--muted);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.chart-motion-control input {
+  width: 16px;
+  height: 16px;
+  min-height: 16px;
+  flex: none;
+  margin: 0;
+  padding: 0;
+  accent-color: var(--emerald);
+  cursor: pointer;
+}

@@ -20,7 +20,8 @@ Visita `http://localhost:4173`.
 2. Pulsa **Cambiar datos** para subir o arrastrar un `.xlsx`, `.xls` o `.csv`, o cargar otra simulación. Puedes elegir el modo de encabezado y, si hay más de dos columnas, las columnas X/Y.
 3. Elige un método en la navegación. En móvil, abre **Elegir método**.
 4. Ajusta los parámetros disponibles. El cálculo se actualiza al editarlos; **Recalcular** lo ejecuta inmediatamente.
-5. Consulta la gráfica, los cálculos, **Cómo funciona este método** y **Datos originales**. Exporta el resultado a Excel o guarda la gráfica en PNG.
+5. Activa **Transición suave** en la gráfica para ver puntos y curvas desplazarse entre cálculos. Esta opción parte de la preferencia de movimiento reducido del navegador.
+6. Consulta la gráfica, los cálculos, **Cómo funciona este método** y **Datos originales**. Exporta el resultado a Excel o guarda la gráfica en PNG.
 
 Los archivos CSV pueden usar coma, punto y coma o tabulación como separador. Se ordenan los datos por X y se informa de filas no numéricas y valores X repetidos.
 
@@ -47,7 +48,7 @@ npm test
 
 También puedes usar `pnpm install --frozen-lockfile`, `pnpm check` y `pnpm test`; se incluye `pnpm-lock.yaml`.
 
-Las 32 comprobaciones verifican integración polinómica, equivalencia entre interpoladores, derivación en mallas no uniformes, validación de funciones y convergencia de raíces. También comprueban que la cifra protagonista corresponda al cálculo y se limpie cuando no hay raíz. Cuatro pruebas adicionales de movimiento verifican cambios rápidos de estado y preferencias de movimiento reducido.
+Las 39 comprobaciones verifican integración polinómica, equivalencia entre interpoladores, derivación en mallas no uniformes, validación de funciones y convergencia de raíces. También comprueban que la cifra protagonista corresponda al cálculo y se limpie cuando no hay raíz. Cuatro pruebas adicionales de GSAP verifican cambios rápidos de estado y movimiento reducido. Tres pruebas con Chart.js real comprueban coordenadas intermedias, llegada al punto final y desactivación de la transición.
 
 ## Estructura
 

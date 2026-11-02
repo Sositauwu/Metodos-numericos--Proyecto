@@ -27,10 +27,10 @@ En escritorio, resultado y gráfica comparten una fila. En móvil, la respuesta 
 
 ## Movimiento
 
-GSAP 3.15.0 se sirve desde `libs/gsap.min.js`. `motion.js` coordina transiciones de resultado/gráfica de 0,4 s con `power2.out`, apertura de controles y desarrollo, cierre más rápido y elevación de 2 px en botones de puntero fino. Las secuencias se interrumpen y retoman desde el estado actual. El número final se actualiza inmediatamente; no se anima pasando por cifras inventadas.
+GSAP 3.15.0 se sirve desde `libs/gsap.min.js`. `motion.js` coordina la entrada del resultado y la primera aparición de la gráfica en 0,4 s con `power2.out`, apertura de controles y desarrollo, cierre más rápido y elevación de 2 px en botones de puntero fino. Las secuencias se interrumpen y retoman desde el estado actual. En los recálculos, Chart.js mantiene la instancia y las series y desplaza puntos y curvas desde las coordenadas visibles hasta las nuevas en 400 ms (`easeOutCubic`); el panel permanece estable, sin otra entrada o desvanecimiento. La casilla «Transición suave» permite activar o desactivar la interpolación geométrica; inicialmente respeta movimiento reducido, y una elección explícita del usuario tiene prioridad durante esa visita. El número final se actualiza inmediatamente; no se anima pasando por cifras inventadas.
 
 Movimiento reducido sustituye traslación, escala y hover por opacidad breve. Los estados `hidden`, `inert`, `aria-expanded` y el foco se mantienen independientes de la terminación visual.
 
 ## Estado de revisión
 
-32 pruebas numéricas y de presentación correctas y 4 pruebas DOM de interrupción y accesibilidad con GSAP real. La revisión estática de Impeccable no arroja hallazgos; el lint de Taste Skill no tiene fallos. Las sombras discretas se conservan porque el usuario las pidió expresamente. La comprobación visual y de transiciones en navegador sigue pendiente mientras el permiso guardado deniegue el acceso al origen local. No se ha subido esta versión a GitHub.
+39 pruebas numéricas y de presentación, 4 pruebas DOM de GSAP y 3 pruebas de interpolación con Chart.js real correctas. La revisión estática de Impeccable no arroja hallazgos; el lint de Taste Skill no tiene fallos. Las sombras discretas se conservan porque el usuario las pidió expresamente. La comprobación visual y de transiciones en navegador sigue pendiente mientras el permiso guardado deniegue el acceso al origen local. No se ha subido esta versión a GitHub.

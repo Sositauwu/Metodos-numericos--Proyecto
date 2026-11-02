@@ -5,10 +5,9 @@
   const reduce = window.matchMedia("(prefers-reduced-motion: reduce)");
   const tweens = new WeakMap();
   let resultTimeline = null;
+  let chartRevealed = false;
   const resultTargets = () => [
-    ...document.querySelectorAll(
-      ".primary-result, .chart-panel, #methodTableCard",
-    ),
+    ...document.querySelectorAll(".primary-result, #methodTableCard"),
   ];
   const clear = (element) => {
     if (!element) return;
@@ -86,6 +85,10 @@
     }
   }
   function results() {
+    if (!chartRevealed) {
+      reveal(document.querySelector(".chart-panel"));
+      chartRevealed = true;
+    }
     const targets = resultTargets();
     const interrupted = resultTimeline?.isActive();
     resultTimeline?.kill();
@@ -193,6 +196,7 @@
   reduce.addEventListener("change", () => {
     resultTimeline?.kill();
     resultTargets().forEach(clear);
+    clear(document.querySelector(".chart-panel"));
     document
       .querySelectorAll(
         "#sourceControls, #methodNav, .data-context, .warn-box, .how-text, .raw-data .table-scroll, .project-credits",

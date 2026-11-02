@@ -13,8 +13,21 @@ const dom = new JSDOM(html, {
   pretendToBeVisual: true,
 });
 const w = dom.window;
-w.Chart = function () {
-  this.destroy = () => {};
+w.__charts = [];
+w.Chart = function (context, config) {
+  this.type = config.type;
+  w.__charts.push(this);
+  this.data = config.data;
+  this.options = config.options;
+  this.updates = [];
+  this.destroyed = false;
+  this.destroy = () => {
+    this.destroyed = true;
+  };
+  this.stop = () => {};
+  this.update = (mode) => {
+    this.updates.push(mode);
+  };
 };
 w.XLSX = {};
 w.HTMLCanvasElement.prototype.getContext = () => ({});
@@ -256,6 +269,67 @@ check(
 check(
   "Sin raíz: se muestra un estado de error explícito",
   w.document.getElementById("primaryResult").dataset.status === "error",
+  true,
+);
+
+ev(
+  `document.getElementById('fExpr').value = ''; loadDemoCircuitData(); document.getElementById('nNodes').value = '3'; runMethod('lagrange')`,
+);
+const mainGraph = () => w.__charts.find((c) => c.type === "scatter");
+const graphBefore = mainGraph();
+const curveBefore = graphBefore.data.datasets.find(
+  (s) => s.id === "approximation",
+);
+const pointBefore = graphBefore.data.datasets.find((s) => s.id === "highlight");
+ev(
+  `document.getElementById('nNodes').value = '7'; document.getElementById('evalX').value = '1.5'; runMethod('lagrange')`,
+);
+check(
+  "Cambiar nodos conserva la instancia de la gráfica",
+  mainGraph() === graphBefore && !graphBefore.destroyed,
+  true,
+);
+check(
+  "Cambiar nodos conserva la identidad de la curva",
+  mainGraph().data.datasets.find((s) => s.id === "approximation") ===
+    curveBefore,
+  true,
+);
+check(
+  "El punto destacado se desplaza dentro de la misma serie",
+  mainGraph().data.datasets.find((s) => s.id === "highlight") === pointBefore &&
+    pointBefore.data[0].x === 1.5,
+  true,
+);
+check(
+  "La transición entre puntos dura 400 ms",
+  mainGraph().options.animation.duration,
+  400,
+);
+ev(`runMethod('derivadas'); runMethod('lagrange')`);
+check(
+  "Añadir y retirar el eje de derivada conserva la gráfica",
+  mainGraph() === graphBefore && !mainGraph().options.scales.y2,
+  true,
+);
+ev(
+  `document.getElementById('animateChart').checked = false; document.getElementById('animateChart').dispatchEvent(new Event('change')); runMethod('lagrange')`,
+);
+check(
+  "Desactivar transiciones aplica el dato final sin animación",
+  mainGraph().options.animation === false &&
+    mainGraph().updates.at(-1) === "none",
+  true,
+);
+ev(
+  `document.getElementById('animateChart').checked = true; document.getElementById('animateChart').dispatchEvent(new Event('change')); runMethod('biseccion')`,
+);
+const convergenceBefore = w.__charts.find((c) => c.type === "line");
+ev(`document.getElementById('targetY').value = '2.5'; runMethod('biseccion')`);
+check(
+  "La convergencia también conserva su instancia entre cálculos",
+  w.__charts.find((c) => c.type === "line") === convergenceBefore &&
+    !convergenceBefore.destroyed,
   true,
 );
 

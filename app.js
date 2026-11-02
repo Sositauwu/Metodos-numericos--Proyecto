@@ -5,8 +5,7 @@ if (typeof Chart !== "undefined" && Chart.defaults) {
   Chart.defaults.font.size = 11;
   Chart.defaults.color = "#52647a";
   Chart.defaults.borderColor = "#e8edf4";
-  // Recalcular es una acción frecuente: mostrar el dato final inmediatamente.
-  Chart.defaults.animation = false;
+  // Cada instancia define su duración sin desactivar los interpoladores globales.
 }
 
 let primaryResult = null;
@@ -1157,6 +1156,9 @@ function downloadChartPNG() {
     alert("Primero ejecuta un método para generar la gráfica.");
     return;
   }
+  // Exportar siempre la posición final, aunque la transición siga en curso.
+  chartInstance.stop();
+  chartInstance.update("none");
   const c = document.createElement("canvas");
   c.width = src.width;
   c.height = src.height;
@@ -1286,17 +1288,61 @@ function runMethod(methodName, btnElement) {
   window.LabMotion?.results();
 }
 
+// Conservar el lienzo y cada serie permite interpolar desde su posición visible.
+// easeOutCubic equivale a power2.out en GSAP (400 ms).
+const chartMotionPreference = window.matchMedia?.(
+  "(prefers-reduced-motion: reduce)",
+);
+let chartMotionChosen = false;
+$("animateChart").checked = !chartMotionPreference?.matches;
+function chartAnimation() {
+  return $("animateChart").checked
+    ? { duration: 400, easing: "easeOutCubic" }
+    : false;
+}
+function updatePersistentChart(instance, context, config) {
+  if (!instance) return new Chart(context, config);
+  const existing = new Map(
+    instance.data.datasets.map((series) => [series.id, series]),
+  );
+  instance.data.datasets = config.data.datasets.map((series) => {
+    const retained = existing.get(series.id);
+    return retained ? Object.assign(retained, series) : series;
+  });
+  if (config.data.labels) instance.data.labels = config.data.labels;
+  instance.options = config.options;
+  instance.update(config.options.animation === false ? "none" : undefined);
+  return instance;
+}
+function applyChartMotion() {
+  [chartInstance, convChartInstance].filter(Boolean).forEach((chart) => {
+    chart.stop();
+    chart.options.animation = chartAnimation();
+    chart.update("none");
+  });
+}
+$("animateChart").addEventListener("change", () => {
+  chartMotionChosen = true;
+  applyChartMotion();
+});
+chartMotionPreference?.addEventListener("change", (event) => {
+  if (!chartMotionChosen) {
+    $("animateChart").checked = !event.matches;
+    applyChartMotion();
+  }
+});
+
 function setConvergence(errs, label) {
   const cont = $("convContainer");
   cont.style.display = "block";
   const ctx = $("convChart").getContext("2d");
-  if (convChartInstance) convChartInstance.destroy();
-  convChartInstance = new Chart(ctx, {
+  convChartInstance = updatePersistentChart(convChartInstance, ctx, {
     type: "line",
     data: {
       labels: errs.map((_, i) => i + 1),
       datasets: [
         {
+          id: "convergence",
           label,
           data: errs.map((e) => Math.max(e, 1e-17)),
           borderColor: "#285bc5",
@@ -1307,6 +1353,7 @@ function setConvergence(errs, label) {
       ],
     },
     options: {
+      animation: chartAnimation(),
       responsive: true,
       maintainAspectRatio: false,
       scales: {
@@ -1368,10 +1415,6 @@ function runMethodCore(methodName) {
 
   $("workspace").style.display = "block";
   $("convContainer").style.display = "none";
-  if (convChartInstance) {
-    convChartInstance.destroy();
-    convChartInstance = null;
-  }
   $("methodFormula").style.display = "none";
 
   P = getParams();
@@ -2158,7 +2201,6 @@ function runMethodCore(methodName) {
 function drawChart(options) {
   const canvas = $("mainChart");
   const ctx = canvas.getContext("2d");
-  if (chartInstance) chartInstance.destroy();
   canvas.setAttribute("aria-label", "Gráfica: " + $("methodTitle").textContent);
 
   let datasets = [];
@@ -2166,6 +2208,7 @@ function drawChart(options) {
   // Puntos discretos del Excel (si no es gráfico de g(x) desplazado)
   if (!options.hideRawY) {
     datasets.push({
+      id: "observations",
       label: `Datos Experimentales / Simulados (${colYName})`,
       data: xData.map((x, i) => ({ x, y: yData[i] })),
       backgroundColor: "#bd5853",
@@ -2184,6 +2227,7 @@ function drawChart(options) {
       pts.push({ x: v.x, y: 0 }, { x: v.x, y: v.y }, { x: v.x, y: NaN });
     });
     datasets.push({
+      id: "panels",
       label: options.verticalsLabel || "Divisiones",
       data: pts,
       borderColor: "rgba(24, 104, 219, 0.55)",
@@ -2197,6 +2241,7 @@ function drawChart(options) {
 
   // Curva principal del método numérico (tension 0: los tramos rectos se dibujan rectos)
   datasets.push({
+    id: "approximation",
     label: options.curveLabel,
     data: options.curvePoints,
     borderColor: "#285bc5",
@@ -2213,6 +2258,7 @@ function drawChart(options) {
   // Curva secundaria (Derivada o Eje Cero)
   if (options.secondaryPoints) {
     datasets.push({
+      id: "secondary",
       label: options.secondaryCurveLabel,
       data: options.secondaryPoints,
       borderColor: "#0d9488",
@@ -2227,8 +2273,9 @@ function drawChart(options) {
   }
 
   // Curvas adicionales (solución analítica de la derivada)
-  (options.extraCurves || []).forEach((c) => {
+  (options.extraCurves || []).forEach((c, index) => {
     datasets.push({
+      id: `reference-${index}`,
       label: c.label,
       data: c.points,
       borderColor: c.color || "#a46b32",
@@ -2257,6 +2304,7 @@ function drawChart(options) {
         : null;
   if (hp) {
     datasets.push({
+      id: "highlight",
       label: hp.label,
       data: hp.points.map((p) => ({ x: p.x, y: p.y })),
       backgroundColor: "#087e5b",
@@ -2269,10 +2317,11 @@ function drawChart(options) {
     });
   }
 
-  chartInstance = new Chart(ctx, {
+  chartInstance = updatePersistentChart(chartInstance, ctx, {
     type: "scatter",
     data: { datasets },
     options: {
+      animation: chartAnimation(),
       responsive: true,
       maintainAspectRatio: false,
       scales: {
